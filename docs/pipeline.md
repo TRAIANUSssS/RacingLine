@@ -11,7 +11,8 @@ RacingLine currently works as an offline-first pipeline with a future in-game vi
 5. Inspect plots in `output/plots/<map-name>/`
 6. Inspect processed data in `data/processed/<map-name>/analysis_data.json`
 7. Build `analysis_bundle.json`
-8. Load that bundle from Openplanet later
+8. Copy or generate that bundle into Openplanet plugin storage
+9. Load that bundle from the Openplanet UI
 
 ## Layers
 
@@ -61,9 +62,19 @@ This layer stabilizes the contract for Openplanet. The bundle now includes:
 ### Viewer
 
 - Code: `src/openplanet`
-- Current state: shell only
+- Plugin folder: `src/openplanet/RacingLine`
+- Current state: loader + UI implemented, world rendering not implemented
 
-The viewer is expected to read `analysis_bundle.json` and render prepared world-space data.
+The viewer currently:
+
+- resolves bundle paths relative to Openplanet plugin storage
+- loads and parses `analysis_bundle.json`
+- exposes a reload button
+- shows load status, bundle error text, map name, mine run name, and point counts
+
+Expected storage location for a relative bundle path:
+
+- `OpenplanetNext/PluginStorage/RacingLine/analysis_bundle.json`
 
 ## Common commands
 
@@ -71,6 +82,12 @@ The viewer is expected to read `analysis_bundle.json` and render prepared world-
 .\scripts\extract.ps1
 .\scripts\analyze.ps1 --source-dir ".\data\raw\trajectories\Spring 2026 - 03"
 .\scripts\build_bundle.ps1 --analysis-json ".\data\processed\Spring 2026 - 03\analysis_data.json"
+```
+
+Then place the resulting bundle in Openplanet storage:
+
+```text
+C:\Users\<user>\OpenplanetNext\PluginStorage\RacingLine\analysis_bundle.json
 ```
 
 ## Default paths
@@ -81,4 +98,3 @@ The viewer is expected to read `analysis_bundle.json` and render prepared world-
 - Plots: `output/plots`
 - Reports: `output/reports`
 - Temporary/debug files: `data/temp`
-

@@ -20,16 +20,18 @@ It should not:
 
 ## Current status
 
+- plugin lives in `src/openplanet/RacingLine`
 - `info.toml` exists
-- `main.as` contains a viewer shell
-- bundle parsing is not implemented yet
+- `main.as`, `Config.as`, `Models.as`, `Loader.as`, and `Ui.as` are implemented
+- bundle parsing is implemented
+- UI window is implemented
 - world rendering is not implemented yet
 
 ## Expected input
 
 The viewer should consume:
 
-- `data/processed/<map-name>/analysis_bundle.json`
+- `analysis_bundle.json` from Openplanet plugin storage
 
 The most important bundle fields for the MVP are:
 
@@ -45,17 +47,51 @@ The bundle now already contains:
 - aligned progress samples
 - problem zone coordinates copied from centerline points
 
+## Current plugin behavior
+
+The current viewer can:
+
+- auto-load on startup
+- reload on demand from the UI
+- show whether loading succeeded
+- show the last error message
+- show:
+  - map name
+  - mine run name
+  - center point count
+  - mine point count
+  - problem zone count
+
+It currently does not:
+
+- draw world lines
+- draw problem markers
+- project world positions to screen
+
+## Storage path
+
+If the UI bundle path is relative, the loader resolves it inside Openplanet plugin storage.
+
+Default expected location:
+
+```text
+C:\Users\<user>\OpenplanetNext\PluginStorage\RacingLine\analysis_bundle.json
+```
+
+That allows the UI field to stay as:
+
+```text
+analysis_bundle.json
+```
+
 ## Suggested MVP rendering order
 
-1. Load JSON
-2. Parse line arrays
-3. Parse problem zones
-4. Add simple UI toggles
-5. Render center line
-6. Render mine line
-7. Render problem zone markers
+1. Keep current loader and UI stable
+2. Render center line
+3. Render mine line
+4. Render problem zone markers
+5. Add simple world-space toggles and styling
 
 ## Current constraint
 
-The data contract is ready before the viewer. The next Openplanet step should focus on consuming the existing bundle, not redesigning the schema.
-
+The data contract is ready and the first loader/UI plugin is working. The next Openplanet step should focus on rendering the existing bundle, not redesigning the schema.
