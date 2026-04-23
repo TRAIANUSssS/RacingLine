@@ -1,0 +1,19 @@
+.dotnet/
+.venv/
+.idea/
+.vscode/
+
+**/bin/
+**/obj/
+**/__pycache__/
+*.py[cod]
+
+# Generated analysis artifacts
+output/plots/
+output/reports/
+
+# Local datasets and derived files
+data/raw/replays/
+data/raw/trajectories/
+data/processed/
+data/temp/

@@ -1,0 +1,9 @@
+[meta]
+name = "RacingLine"
+author = "RacingLine"
+category = "Overlay"
+version = "0.1.0"
+
+[script]
+dependencies = []
+
