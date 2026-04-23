@@ -21,6 +21,7 @@ void RenderMenu() {
 
 void Render() {
     RenderWindow();
+    RenderWorldOverlay();
 }
 
 void ReloadBundle() {
@@ -29,4 +30,3 @@ void ReloadBundle() {
         g_LastError = "Unknown bundle loading error.";
     }
 }
-RacingLine

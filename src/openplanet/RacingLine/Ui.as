@@ -55,6 +55,9 @@ void RenderInfoSection() {
     UI::Text("Center points: " + g_Bundle.centerLine.Length);
     UI::Text("Mine points: " + g_Bundle.mineLine.Length);
     UI::Text("Problem zones: " + g_Bundle.problemZones.Length);
+    UI::Text("Projected center segments: " + g_LastProjectedSegments);
+    UI::Text("Skipped center segments: " + g_LastSkippedSegments);
+    UI::Text("Viewport cameras: " + g_LastCameraCount);
 }
 
 void RenderToggleSection() {

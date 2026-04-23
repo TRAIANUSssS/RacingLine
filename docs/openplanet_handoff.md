@@ -22,10 +22,11 @@ It should not:
 
 - plugin lives in `src/openplanet/RacingLine`
 - `info.toml` exists
-- `main.as`, `Config.as`, `Models.as`, `Loader.as`, and `Ui.as` are implemented
+- `main.as`, `Config.as`, `Models.as`, `Loader.as`, `Ui.as`, and `Renderer.as` are implemented
 - bundle parsing is implemented
 - UI window is implemented
-- world rendering is not implemented yet
+- `center_line` world rendering is implemented
+- `info.toml` now depends on the official Openplanet `Camera` dependency
 
 ## Expected input
 
@@ -61,12 +62,14 @@ The current viewer can:
   - center point count
   - mine point count
   - problem zone count
+  - projected/skipped center segment counts
+- project world positions through the official `Camera` dependency
+- draw the `center_line` as a connected overlay line when `Show Center` is enabled
 
 It currently does not:
 
-- draw world lines
-- draw problem markers
-- project world positions to screen
+- draw `mine_line`
+- draw problem zone markers
 
 ## Storage path
 
@@ -86,12 +89,11 @@ analysis_bundle.json
 
 ## Suggested MVP rendering order
 
-1. Keep current loader and UI stable
-2. Render center line
-3. Render mine line
-4. Render problem zone markers
-5. Add simple world-space toggles and styling
+1. Keep current loader, UI, and `center_line` rendering stable
+2. Render mine line
+3. Render problem zone markers
+4. Add simple world-space toggles and styling
 
 ## Current constraint
 
-The data contract is ready and the first loader/UI plugin is working. The next Openplanet step should focus on rendering the existing bundle, not redesigning the schema.
+The data contract is ready, the loader/UI plugin is working, and `center_line` projection is now solved through the official `Camera` dependency. The next Openplanet steps should extend rendering from the existing bundle, not redesign the schema or return to manual camera math.

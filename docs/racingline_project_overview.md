@@ -108,10 +108,12 @@ Location: `src/openplanet`
 
 Current status:
 
-- a first working plugin skeleton exists in `src/openplanet/RacingLine`
+- a working plugin exists in `src/openplanet/RacingLine`
 - the plugin loads `analysis_bundle.json` from plugin storage
-- the UI shows load status, error text, map info, mine run name, and counts
-- world rendering is not implemented yet
+- the UI shows load status, error text, map info, mine run name, counts, and basic render debug counters
+- `center_line` world rendering is implemented
+- projection now uses the official Openplanet `Camera` dependency instead of manual camera math
+- `mine_line` and `problem_zones` rendering are still pending
 
 Design rule:
 
@@ -260,7 +262,8 @@ The current preferred MVP is:
 3. build one stable `analysis_bundle.json`
 4. load that bundle in Openplanet
 5. confirm bundle loading and metadata in UI
-6. render center line, mine line, and problem zones in game
+6. render center line in game
+7. add mine line and problem zones in later steps
 
 This avoids rewriting working extractor and analytics logic too early.
 
