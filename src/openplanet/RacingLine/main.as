@@ -7,6 +7,10 @@ bool g_ShowCenter = true;
 bool g_ShowMine = true;
 bool g_ShowProblemZones = true;
 bool g_ColorCenterBySpeedDelta = false;
+float g_CenterLineWidth = CenterLineWidth;
+float g_MineLineWidth = MineLineWidth;
+float g_ProblemZoneMarkerSize = ProblemZoneMarkerSize;
+int g_MaxVisibleProblemZones = MaxVisibleProblemZones;
 
 string g_CurrentMapName = "";
 string g_CurrentMapFolderName = "";

@@ -5,13 +5,13 @@ void RenderWindow() {
 
     UI::SetNextWindowSize(420, 320, UI::Cond::FirstUseEver);
     if (UI::Begin("RacingLine", g_ShowWindow)) {
-        RenderDataSection();
-        UI::Separator();
         RenderStatusSection();
         UI::Separator();
-        RenderInfoSection();
+        RenderDataSection();
         UI::Separator();
         RenderToggleSection();
+        UI::Separator();
+        RenderInfoSection();
     }
     UI::End();
 }
@@ -93,4 +93,10 @@ void RenderToggleSection() {
     g_ColorCenterBySpeedDelta = UI::Checkbox("Color Center By Speed Delta", g_ColorCenterBySpeedDelta);
     g_ShowMine = UI::Checkbox("Show Mine", g_ShowMine);
     g_ShowProblemZones = UI::Checkbox("Show Problem Zones", g_ShowProblemZones);
+
+    UI::Text("Render Settings");
+    g_CenterLineWidth = UI::SliderFloat("Center width", g_CenterLineWidth, 1.0f, 10.0f);
+    g_MineLineWidth = UI::SliderFloat("Mine width", g_MineLineWidth, 1.0f, 10.0f);
+    g_ProblemZoneMarkerSize = UI::SliderFloat("Problem marker size", g_ProblemZoneMarkerSize, 2.0f, 32.0f);
+    g_MaxVisibleProblemZones = UI::SliderInt("Problem zones", g_MaxVisibleProblemZones, 0, 20);
 }

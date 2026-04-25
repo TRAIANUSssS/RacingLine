@@ -46,7 +46,7 @@ void DrawCenterLine() {
     }
 
     nvg::BeginPath();
-    nvg::StrokeWidth(CenterLineWidth);
+    nvg::StrokeWidth(g_CenterLineWidth);
     nvg::StrokeColor(CenterLineColor);
 
     bool hasOpenSubPath = false;
@@ -130,7 +130,7 @@ void DrawSpeedDeltaCenterLine() {
         nvg::BeginPath();
         nvg::MoveTo(a);
         nvg::LineTo(b);
-        nvg::StrokeWidth(CenterLineWidth);
+        nvg::StrokeWidth(g_CenterLineWidth);
         nvg::StrokeColor(SpeedDeltaColor(segmentDelta, minDelta, maxDelta));
         nvg::Stroke();
         g_LastProjectedCenterSegments++;
@@ -166,7 +166,7 @@ void DrawMineLine() {
     }
 
     nvg::BeginPath();
-    nvg::StrokeWidth(MineLineWidth);
+    nvg::StrokeWidth(g_MineLineWidth);
     nvg::StrokeColor(MineLineColor);
 
     bool hasOpenSubPath = false;
@@ -207,7 +207,8 @@ void DrawProblemZones() {
         return;
     }
 
-    for (uint i = 0; i < g_Bundle.problemZones.Length; i++) {
+    uint visibleCount = Math::Min(uint(Math::Max(g_MaxVisibleProblemZones, 0)), g_Bundle.problemZones.Length);
+    for (uint i = 0; i < visibleCount; i++) {
         ProblemZone@ zone = g_Bundle.problemZones[i];
         if (zone is null) {
             continue;
@@ -222,7 +223,7 @@ void DrawProblemZones() {
         g_LastProjectedProblemZones++;
 
         nvg::BeginPath();
-        nvg::Circle(screenPos, ProblemZoneMarkerSize);
+        nvg::Circle(screenPos, g_ProblemZoneMarkerSize);
         nvg::FillColor(ProblemZoneColor);
         nvg::Fill();
         nvg::StrokeWidth(2.0f);
