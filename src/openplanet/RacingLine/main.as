@@ -24,10 +24,15 @@ string g_PipelineProjectRoot = PipelineProjectRoot;
 int g_PipelineRangeFrom = PipelineDefaultRangeFrom;
 int g_PipelineRangeTo = PipelineDefaultRangeTo;
 string g_PipelineReplayInputDir = "";
+bool g_PipelineIncludeMineReplay = true;
 string g_PipelineCommand = "";
 string g_PipelineCopyStatus = "";
+bool g_MineReplayDownloadRunning = false;
+string g_MineReplayDownloadStatus = "";
+string g_MineReplayPath = "";
 
 void Main() {
+    NadeoServices::AddAudience(NadeoCoreAudience);
     UpdateCurrentMap(true);
 }
 
@@ -73,6 +78,7 @@ void UpdateCurrentMap(bool force) {
     g_CurrentMapFolderName = SanitizePathSegment(mapName);
     g_SelectedBundleFileName = DefaultBundleFileName;
     g_PipelineReplayInputDir = BuildDefaultReplayInputDir(mapName);
+    g_MineReplayPath = BuildMineReplayStoragePath();
     UpdatePipelineCommand();
     RefreshBundleFiles();
     ReloadBundle();
@@ -206,6 +212,10 @@ void UpdatePipelineCommand() {
     command += " --range " + QuotePowerShell(BuildPipelineRange());
     if (g_PipelineReplayInputDir.Trim().Length > 0) {
         command += " --replay-input-dir " + QuotePowerShell(g_PipelineReplayInputDir.Trim());
+    }
+    if (g_PipelineIncludeMineReplay) {
+        command += " --include-mine-replay";
+        command += " --mine-replay-path " + QuotePowerShell(g_MineReplayPath);
     }
 
     if (g_PipelineProjectRoot.Trim().Length > 0) {

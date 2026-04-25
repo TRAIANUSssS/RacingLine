@@ -56,16 +56,26 @@ void RenderPipelineSection() {
     int previousRangeFrom = g_PipelineRangeFrom;
     int previousRangeTo = g_PipelineRangeTo;
     string previousReplayDir = g_PipelineReplayInputDir;
+    bool previousIncludeMineReplay = g_PipelineIncludeMineReplay;
 
     g_PipelineProjectRoot = UI::InputText("Project root", g_PipelineProjectRoot);
     g_PipelineRangeFrom = UI::InputInt("Rank from", g_PipelineRangeFrom);
     g_PipelineRangeTo = UI::InputInt("Rank to", g_PipelineRangeTo);
     g_PipelineReplayInputDir = UI::InputText("Replay dir", g_PipelineReplayInputDir);
+    g_PipelineIncludeMineReplay = UI::Checkbox("Use mine replay", g_PipelineIncludeMineReplay);
     NormalizePipelineRange();
 
-    if (previousRoot != g_PipelineProjectRoot || previousRangeFrom != g_PipelineRangeFrom || previousRangeTo != g_PipelineRangeTo || previousReplayDir != g_PipelineReplayInputDir) {
+    if (previousRoot != g_PipelineProjectRoot || previousRangeFrom != g_PipelineRangeFrom || previousRangeTo != g_PipelineRangeTo || previousReplayDir != g_PipelineReplayInputDir || previousIncludeMineReplay != g_PipelineIncludeMineReplay) {
         UpdatePipelineCommand();
         g_PipelineCopyStatus = "";
+    }
+
+    UI::Text("Mine replay: " + (g_MineReplayPath.Length > 0 ? g_MineReplayPath : BuildMineReplayStoragePath()));
+    if (UI::Button(g_MineReplayDownloadRunning ? "Downloading mine replay" : "Download mine replay")) {
+        StartMineReplayDownload();
+    }
+    if (g_MineReplayDownloadStatus.Length > 0) {
+        UI::TextWrapped(g_MineReplayDownloadStatus);
     }
 
     if (UI::Button("Generate command")) {

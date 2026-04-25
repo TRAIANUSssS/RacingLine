@@ -4,7 +4,7 @@ RacingLine currently works as an offline-first pipeline with an Openplanet in-ga
 
 ## End-to-end flow
 
-1. Put `.Replay.Gbx` files in `data/raw/replays` or a selected subfolder such as `data/raw/replays/2`
+1. Put `.Replay.Gbx` or `.Ghost.Gbx` files in `data/raw/replays`, `data/raw/ghosts`, or a selected subfolder
 2. Run the C# extractor
 3. Inspect generated trajectory JSON in `data/raw/trajectories/<map-name>/`
 4. Run the Python analyzer for one map
@@ -21,10 +21,31 @@ RacingLine currently works as an offline-first pipeline with an Openplanet in-ga
 
 - Code: `src/extractor-csharp`
 - Entry point: `Program.cs`
-- Reads: `data/raw/replays` or the selected replay input directory
+- Reads: `data/raw/replays`, `data/raw/ghosts`, or the selected replay/ghost input directory
 - Writes: `data/raw/trajectories`
 
-This layer parses `.Replay.Gbx` files and exports raw points with `t/x/y/z/speed`. It scans only the selected directory by default and reads nested directories only with `--recursive`.
+This layer parses `.Replay.Gbx` and `.Ghost.Gbx` files and exports raw points with `t/x/y/z/speed`. It scans only the selected directory by default and reads nested directories only with `--recursive`.
+
+### Ghost download
+
+- Code: `scripts/download_ghosts.py`
+- Reads: Trackmania.io leaderboard metadata and ghost download URLs
+- Writes: `data/raw/ghosts/<map>/top_<range>/`
+
+This layer fetches leaderboard entries from:
+
+```text
+https://trackmania.io/api/leaderboard/<leaderboard-id>/<map-uid>?offset=<offset>&length=<length>
+```
+
+Ranks in the RacingLine CLI are 1-based and inclusive. For example, `--range "1000-1010"` becomes `offset=999&length=11`.
+
+The downloader writes:
+
+- `.Ghost.Gbx` files
+- `manifest.json` with source metadata, local paths, player names, ranks, times, and download status
+
+Trackmania.io exposes only the first 10000 ranks in the web UI/API flow used here, so the downloader rejects ranges above rank `10000`.
 
 ### Analysis
 
@@ -107,11 +128,46 @@ C:\Users\<user>\OpenplanetNext\PluginStorage\RacingLine\bundles\Spring 2026 - 02
 Individual stages can still be run directly:
 
 ```powershell
+python .\scripts\download_ghosts.py --leaderboard-id "2b5465cd-38a6-4103-b4c9-27f72adceba6" --map-uid "2pYyYky9ccXdTBaaLncWOjFc6jf" --map "Spring 2026 - 02" --range "1000-1010"
 .\scripts\extract.ps1 --replay-dir ".\data\raw\replays\2" --output-root ".\data\raw\trajectories" --map "Spring 2026 - 02"
 .\scripts\analyze.ps1 --map "Spring 2026 - 02" --mine "TRAIANUSssS" --expected-map-prefix "Spring 2026 - 02" --require-mine
 .\scripts\build_bundle.ps1 --map "Spring 2026 - 02" --range "1000-1010"
 .\scripts\install_bundle.ps1 -BundlePath ".\data\processed\Spring 2026 - 02\top_1000_1010.analysis_bundle.json" -BundleName "top_1000_1010.analysis_bundle.json"
 ```
+
+With automatic ghost download:
+
+```powershell
+python .\pipeline.py --map "Spring 2026 - 02" --mine "TRAIANUSssS" --range "1000-1010" --download-ghosts --leaderboard-id "2b5465cd-38a6-4103-b4c9-27f72adceba6" --map-uid "2pYyYky9ccXdTBaaLncWOjFc6jf"
+```
+
+This downloads ghosts into:
+
+```text
+data/raw/ghosts/Spring 2026 - 02/top_1000_1010/
+```
+
+and then runs extraction from that folder.
+
+With a mine replay downloaded by the Openplanet plugin:
+
+```powershell
+python .\pipeline.py --map "Spring 2026 - 02" --mine "TRAIANUSssS" --range "1000-1010" --download-ghosts --leaderboard-id "2b5465cd-38a6-4103-b4c9-27f72adceba6" --map-uid "2pYyYky9ccXdTBaaLncWOjFc6jf" --include-mine-replay
+```
+
+By default, `--include-mine-replay` reads:
+
+```text
+C:\Users\<user>\OpenplanetNext\PluginStorage\RacingLine\tmp\<map>\mine.Replay.Gbx
+```
+
+The path can be overridden with:
+
+```powershell
+--mine-replay-path "C:\path\to\mine.Replay.Gbx"
+```
+
+When a separate mine replay is included, `pipeline.py` creates a temporary combined input folder in `data/temp/pipeline_inputs/<map>/top_<range>/`, copies the leaderboard ghosts and mine replay there, and extracts from that combined folder. The copied mine replay is renamed with the `--mine` value so the analyzer can find `mine_line`.
 
 Replay extraction scans only the selected replay directory by default. Nested map folders such as `data/raw/replays/1` or `data/raw/replays/9` are not scanned when the selected input directory is `data/raw/replays`. Use `--recursive-replays` on `pipeline.py` or `--recursive` on `extract.ps1` only when nested scanning is explicitly wanted.
 
@@ -139,13 +195,14 @@ The Openplanet command handoff stage is implemented:
 
 The next pipeline evolution is:
 
-- download replay files for a leaderboard range
+- download ghost files for a leaderboard range
 - add caching for already downloaded replays and already extracted trajectories
 - verify the pipeline across multiple maps and leaderboard ranges
 
 ## Default paths
 
 - Raw replays: `data/raw/replays`
+- Raw ghosts: `data/raw/ghosts`
 - Raw trajectories: `data/raw/trajectories`
 - Processed analysis: `data/processed`
 - Plots: `output/plots`

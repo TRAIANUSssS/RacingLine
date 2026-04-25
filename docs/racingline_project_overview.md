@@ -34,7 +34,9 @@ Location: `src/extractor-csharp`
 
 Input:
 
-- Trackmania `.Replay.Gbx` files from `data/raw/replays` or a selected replay subfolder such as `data/raw/replays/2`
+- Trackmania `.Replay.Gbx` files from `data/raw/replays`
+- Trackmania `.Ghost.Gbx` files from `data/raw/ghosts`
+- or a selected input subfolder such as `data/raw/replays/2` or `data/raw/ghosts/<map>/top_1000_1010`
 
 Output:
 
@@ -46,9 +48,9 @@ Point format:
 { "t": ..., "x": ..., "y": ..., "z": ..., "speed": ... }
 ```
 
-This layer uses C# and GBX.NET because replay parsing is already working there and should stay outside Openplanet.
+This layer uses C# and GBX.NET because replay/ghost parsing is already working there and should stay outside Openplanet.
 
-The extractor scans only the selected replay directory by default. Nested folders are included only with `--recursive`.
+The extractor scans only the selected replay/ghost directory by default. Nested folders are included only with `--recursive`.
 
 ### 2. Analysis
 
@@ -112,6 +114,7 @@ Location: `src/openplanet`
 Current status:
 
 - a working plugin exists in `src/openplanet/RacingLine`
+- the plugin depends on `Camera` and `NadeoServices`
 - the plugin detects the current map and loads bundles from `PluginStorage/RacingLine/bundles/<map>/`
 - the default bundle filename is currently `top_1000_1010.analysis_bundle.json`
 - the UI shows load status, error text, map info, mine run name, counts, toggles, and render debug counters
@@ -119,6 +122,8 @@ Current status:
 - the UI shows available bundle files for the current map folder as a combo box
 - the UI block order is `Status`, `Data`, `Pipeline`, `Toggles`, `Info`
 - the UI generates and copies a terminal command for `pipeline.py`
+- the UI can download the current player's personal-best replay for the current map into `PluginStorage/RacingLine/tmp/<map>/mine.Replay.Gbx`
+- the generated pipeline command can include that mine replay through `--include-mine-replay --mine-replay-path`
 - the UI exposes runtime render controls for center line width, mine line width, problem zone marker size, and visible problem zone count
 - `center_line` world rendering is implemented
 - `mine_line` world rendering is implemented
@@ -290,7 +295,7 @@ The next larger project direction is to move more of the pipeline orchestration 
 1. choose leaderboard rank ranges for analysis from the UI
 2. generate and copy the external pipeline command from the UI
 3. pass the detected map and player nickname into scripts instead of relying on hardcoded defaults
-4. later, download replay files for a leaderboard range
+4. download ghost files for a leaderboard range
 5. later, run extraction, analysis, bundle building, and bundle installation automatically
 6. support multiple maps and player nicknames without manual path or nickname edits
 
@@ -422,13 +427,14 @@ Current implementation:
 - the plugin generates a PowerShell command for `pipeline.py`
 - the plugin can copy the generated command to the clipboard
 - the plugin does not execute external processes
+- the plugin can download the current player's mine replay into plugin storage through NadeoServices
 
 ### Stage 5 - Replay preparation handoff
 
 Current lightweight implementation:
 
-- the Openplanet UI does not download replay files yet
-- replay files are expected to already exist in the selected replay input folder
+- the Openplanet UI can download only the current player's mine replay
+- leaderboard replay/ghost files are expected to already exist in the selected replay input folder or be downloaded by `pipeline.py --download-ghosts`
 - the generated command points `pipeline.py` at that folder
 
 ```text
@@ -443,20 +449,34 @@ Future extension note:
 
 - use leaderboard metadata to set the maximum valid `Rank to` value instead of leaving it open-ended
 
-### Stage 6 - Replay download (semi-automatic)
+### Stage 6 - Ghost download (semi-automatic)
 
-Implement a script to:
+Current implementation:
 
-- fetch replay/ghost files for a leaderboard rank range
-- store them in:
+- `scripts/download_ghosts.py` fetches Trackmania.io leaderboard metadata and ghost download URLs
+- the script downloads `.Ghost.Gbx` files for an inclusive rank range
+- downloaded files are cached unless `--force` is passed
+- `manifest.json` records ranks, player names, times, source URLs, local paths, and download status
+- ranges above rank `10000` are rejected because the Trackmania.io flow used here exposes only the first 10000 ranks
+- `pipeline.py --download-ghosts` runs the downloader before extraction and then extracts directly from the downloaded `.Ghost.Gbx` files
+- `pipeline.py --include-mine-replay` adds a separately downloaded mine `.Replay.Gbx` file to the extraction input
+- the Openplanet plugin downloads mine replay files through NadeoServices into `PluginStorage/RacingLine/tmp/<map>/mine.Replay.Gbx`
+
+Default storage:
 
 ```text
-data/raw/replays/<map>/
+data/raw/ghosts/<map>/top_<range>/
 ```
 
 Goal:
 
-- eliminate manual replay downloading
+- eliminate manual ghost/replay downloading
+
+Example:
+
+```powershell
+python .\pipeline.py --map "Spring 2026 - 02" --mine "TRAIANUSssS" --range "1000-1010" --download-ghosts --leaderboard-id "2b5465cd-38a6-4103-b4c9-27f72adceba6" --map-uid "2pYyYky9ccXdTBaaLncWOjFc6jf"
+```
 
 ### Stage 7 - Full pipeline trigger
 

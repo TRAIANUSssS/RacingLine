@@ -9,12 +9,15 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 RAW_REPLAYS_DIR = PROJECT_ROOT / "data" / "raw" / "replays"
+RAW_GHOSTS_DIR = PROJECT_ROOT / "data" / "raw" / "ghosts"
 RAW_TRAJECTORIES_DIR = PROJECT_ROOT / "data" / "raw" / "trajectories"
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 PLOTS_DIR = PROJECT_ROOT / "output" / "plots"
+TEMP_DIR = PROJECT_ROOT / "data" / "temp"
 EXTRACTOR_PROJECT = PROJECT_ROOT / "src" / "extractor-csharp" / "RacingLine.csproj"
 TRAJECTORY_SCRIPT = PROJECT_ROOT / "src" / "analyzer-python" / "trajectory.py"
 BUNDLE_BUILDER_SCRIPT = PROJECT_ROOT / "src" / "analyzer-python" / "bundle_builder.py"
+GHOST_DOWNLOADER_SCRIPT = PROJECT_ROOT / "scripts" / "download_ghosts.py"
 
 
 def main() -> None:
@@ -26,7 +29,34 @@ def main() -> None:
         "--replay-input-dir",
         type=Path,
         default=None,
-        help="Directory containing .Replay.Gbx files. Defaults to data/raw/replays/<map> if it exists.",
+        help="Directory containing .Replay.Gbx or .Ghost.Gbx files. Defaults to data/raw/replays/<map> if it exists.",
+    )
+    parser.add_argument("--download-ghosts", action="store_true", help="Download Trackmania.io ghosts before extraction.")
+    parser.add_argument("--leaderboard-id", default=None, help="Trackmania.io leaderboard/campaign id for --download-ghosts.")
+    parser.add_argument("--map-uid", default=None, help="Trackmania map UID for --download-ghosts.")
+    parser.add_argument(
+        "--ghost-output-root",
+        type=Path,
+        default=RAW_GHOSTS_DIR,
+        help="Root directory for downloaded ghosts.",
+    )
+    parser.add_argument(
+        "--ghost-output-dir",
+        type=Path,
+        default=None,
+        help="Exact directory for downloaded ghosts. Overrides --ghost-output-root/<map>/top_<range>.",
+    )
+    parser.add_argument("--force-download-ghosts", action="store_true", help="Redownload ghosts that already exist.")
+    parser.add_argument(
+        "--include-mine-replay",
+        action="store_true",
+        help="Add a separately downloaded mine .Replay.Gbx file to the extraction input.",
+    )
+    parser.add_argument(
+        "--mine-replay-path",
+        type=Path,
+        default=None,
+        help="Path to the mine .Replay.Gbx file. Defaults to Openplanet PluginStorage/RacingLine/tmp/<map>/mine.Replay.Gbx.",
     )
     parser.add_argument(
         "--trajectory-output-root",
@@ -65,10 +95,47 @@ def main() -> None:
 
     replay_input_dir = args.replay_input_dir or _default_replay_input_dir(args.map_name)
     bundle_name = args.bundle_name or f"top_{_normalize_range(args.rank_range)}.analysis_bundle.json"
+    ghost_output_dir = args.ghost_output_dir or args.ghost_output_root / _sanitize_path_part(args.map_name) / f"top_{_normalize_range(args.rank_range)}"
     trajectory_source_dir = args.trajectory_output_root / args.map_name
     analysis_json = PROCESSED_DIR / args.map_name / "analysis_data.json"
     bundle_path = PROCESSED_DIR / args.map_name / bundle_name
     plot_output_dir = PLOTS_DIR / args.map_name
+
+    if args.download_ghosts:
+        if not args.leaderboard_id:
+            raise ValueError("--leaderboard-id is required with --download-ghosts.")
+        if not args.map_uid:
+            raise ValueError("--map-uid is required with --download-ghosts.")
+
+        download_cmd = [
+            sys.executable,
+            str(GHOST_DOWNLOADER_SCRIPT),
+            "--leaderboard-id",
+            args.leaderboard_id,
+            "--map-uid",
+            args.map_uid,
+            "--map",
+            args.map_name,
+            "--range",
+            args.rank_range,
+            "--output-dir",
+            str(ghost_output_dir),
+        ]
+        if args.force_download_ghosts:
+            download_cmd.append("--force")
+        _run(download_cmd)
+        replay_input_dir = ghost_output_dir
+
+    if args.include_mine_replay:
+        mine_replay_path = args.mine_replay_path or _default_mine_replay_path(args.storage_root, args.map_name)
+        replay_input_dir = prepare_combined_replay_input_dir(
+            replay_input_dir=replay_input_dir,
+            mine_replay_path=mine_replay_path,
+            map_name=args.map_name,
+            mine_name=args.mine,
+            rank_range=args.rank_range,
+            recursive=args.recursive_replays,
+        )
 
     if not args.skip_extract:
         if not args.keep_old_trajectories:
@@ -170,9 +237,63 @@ def clean_plot_dir(plot_output_dir: Path) -> None:
         print(f"Removed old plot files: {removed_count} from {plot_output_dir}", flush=True)
 
 
+def prepare_combined_replay_input_dir(
+    replay_input_dir: Path,
+    mine_replay_path: Path,
+    map_name: str,
+    mine_name: str,
+    rank_range: str,
+    recursive: bool,
+) -> Path:
+    replay_input_dir = replay_input_dir.resolve()
+    mine_replay_path = mine_replay_path.resolve()
+    if not replay_input_dir.exists() or not replay_input_dir.is_dir():
+        raise FileNotFoundError(f"Replay/ghost input directory not found: {replay_input_dir}")
+    if not mine_replay_path.exists() or not mine_replay_path.is_file():
+        raise FileNotFoundError(f"Mine replay file not found: {mine_replay_path}")
+
+    combined_dir = TEMP_DIR / "pipeline_inputs" / _sanitize_path_part(map_name) / f"top_{_normalize_range(rank_range)}"
+    clean_directory(combined_dir)
+    combined_dir.mkdir(parents=True, exist_ok=True)
+
+    copied_count = 0
+    for source_path in iter_replay_input_files(replay_input_dir, recursive):
+        shutil.copy2(source_path, combined_dir / source_path.name)
+        copied_count += 1
+
+    mine_file_name = f"{_sanitize_path_part(mine_name)}_mine.Replay.Gbx"
+    shutil.copy2(mine_replay_path, combined_dir / mine_file_name)
+    print(f"Prepared combined input: {combined_dir} ({copied_count} leaderboard files + mine replay)", flush=True)
+    return combined_dir
+
+
+def iter_replay_input_files(input_dir: Path, recursive: bool):
+    patterns = ("*.Replay.Gbx", "*.Ghost.Gbx")
+    seen: set[Path] = set()
+    for pattern in patterns:
+        iterator = input_dir.rglob(pattern) if recursive else input_dir.glob(pattern)
+        for path in iterator:
+            if path.is_file() and path not in seen:
+                seen.add(path)
+                yield path
+
+
+def clean_directory(path: Path) -> None:
+    resolved = path.resolve()
+    temp_root = TEMP_DIR.resolve()
+    if not str(resolved).lower().startswith(str(temp_root).lower()):
+        raise ValueError(f"Refusing to clean directory outside temp root: {resolved}")
+    if path.exists():
+        shutil.rmtree(path)
+
+
 def _default_replay_input_dir(map_name: str) -> Path:
     map_dir = RAW_REPLAYS_DIR / map_name
     return map_dir if map_dir.exists() else RAW_REPLAYS_DIR
+
+
+def _default_mine_replay_path(storage_root: Path, map_name: str) -> Path:
+    return storage_root / "tmp" / _sanitize_path_part(map_name) / "mine.Replay.Gbx"
 
 
 def _run(command: list[str]) -> None:

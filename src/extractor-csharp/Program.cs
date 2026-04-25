@@ -52,17 +52,11 @@ try
 
     Directory.CreateDirectory(options.OutputRootDirectory);
 
-    var replayFiles = Directory
-        .GetFiles(
-            options.ReplayDirectory,
-            "*.Replay.Gbx",
-            options.Recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly)
-        .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
-        .ToArray();
+    var replayFiles = GetInputGbxFiles(options.ReplayDirectory, options.Recursive);
 
     if (replayFiles.Length == 0)
     {
-        Console.WriteLine($"No replay files found in: {options.ReplayDirectory}");
+        Console.WriteLine($"No replay or ghost files found in: {options.ReplayDirectory}");
         return;
     }
 
@@ -92,9 +86,10 @@ try
         }
 
         var mapDirectoryPath = Path.Combine(options.OutputRootDirectory, mapDirectoryName);
+        var outputFileStem = CreateOutputFileStem(options.MapName, replayFile);
         var outputPath = Path.Combine(
             mapDirectoryPath,
-            $"{Path.GetFileNameWithoutExtension(replayFile)}.trajectory.json");
+            $"{outputFileStem}.trajectory.json");
 
         Directory.CreateDirectory(mapDirectoryPath);
 
@@ -121,10 +116,33 @@ static void PrintUsage()
     Console.WriteLine("  dotnet run --project src/extractor-csharp/RacingLine.csproj -- <replay-file> [output-json]");
     Console.WriteLine();
     Console.WriteLine("Options:");
-    Console.WriteLine("  --replay-dir <path>   Directory containing .Replay.Gbx files.");
+    Console.WriteLine("  --replay-dir <path>   Directory containing .Replay.Gbx or .Ghost.Gbx files.");
     Console.WriteLine("  --output-root <path>  Root directory for trajectory JSON output.");
     Console.WriteLine("  --map <name>          Force all batch output into this map folder.");
     Console.WriteLine("  --recursive           Include replay files from nested directories.");
+}
+
+static string[] GetInputGbxFiles(string replayDirectory, bool recursive)
+{
+    var searchOption = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
+    var patterns = new[]
+    {
+        "*.Replay.Gbx",
+        "*.Ghost.Gbx"
+    };
+
+    var files = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    foreach (var pattern in patterns)
+    {
+        foreach (var file in Directory.GetFiles(replayDirectory, pattern, searchOption))
+        {
+            files.Add(file);
+        }
+    }
+
+    return files
+        .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+        .ToArray();
 }
 
 static ExportResult ProcessReplayFile(string inputPath, string outputPath, JsonSerializerOptions jsonOptions)
@@ -332,6 +350,20 @@ static string CreateMapDirectoryName(string? mapName, int mapCounter)
     return string.IsNullOrWhiteSpace(sanitized)
         ? $"map_{mapCounter}"
         : sanitized;
+}
+
+static string CreateOutputFileStem(string? forcedMapName, string inputPath)
+{
+    var inputStem = Path.GetFileNameWithoutExtension(inputPath);
+    if (string.IsNullOrWhiteSpace(forcedMapName))
+    {
+        return inputStem;
+    }
+
+    var prefix = $"{forcedMapName}_";
+    return inputStem.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+        ? inputStem
+        : $"{prefix}{inputStem}";
 }
 
 static string SanitizeForPath(string? value)

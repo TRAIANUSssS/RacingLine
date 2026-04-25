@@ -29,6 +29,7 @@ It should not:
 - bundles are loaded from `bundles/{map}/` under Openplanet plugin storage
 - the default bundle filename is `top_1000_1010.analysis_bundle.json`
 - current map detection is implemented from `GetApp().RootMap.MapName`
+- current mine replay download is implemented through the `NadeoServices` dependency
 - pipeline command generation is implemented in the UI
 - `Show Center`, `Show Mine`, and `Show Problem Zones` toggles are implemented
 - runtime sliders for line widths, marker size, and visible problem zone count are implemented
@@ -67,6 +68,7 @@ The current viewer can:
 - detect the current map name
 - show the current Openplanet user name/login
 - generate and copy a PowerShell command for `pipeline.py`
+- download the current player's personal-best replay for the current map into plugin storage
 - look for bundles in the detected map folder
 - select available `.analysis_bundle.json` files from a combo box
 - show whether loading succeeded
@@ -100,8 +102,18 @@ The `Pipeline` block includes:
 - editable project root
 - editable leaderboard rank range start/end
 - editable replay input directory
+- a mine replay download button
+- a `Use mine replay` toggle that appends `--include-mine-replay --mine-replay-path ...` to the generated command
 - generated terminal command
 - copy button for the generated command
+
+Mine replay storage:
+
+```text
+OpenplanetNext/PluginStorage/RacingLine/tmp/<map>/mine.Replay.Gbx
+```
+
+The plugin resolves the current map UID, translates it to a Nadeo map ID, fetches the current account's personal-best record, and downloads the record replay URL via `NadeoServices`.
 
 Pipeline range rules:
 
@@ -144,7 +156,7 @@ Current Openplanet integration is intentionally lightweight:
 - the plugin generates a terminal command for `pipeline.py`
 - the plugin can copy that command to the clipboard
 
-The plugin does not execute external processes and does not download replays. Replay files are still expected to exist under the selected `data/raw/replays/...` folder before running the copied command.
+The plugin does not execute external processes. It can download only the current player's mine replay into plugin storage; leaderboard ghost downloading still happens in the external Python pipeline.
 
 ## Current constraint
 
