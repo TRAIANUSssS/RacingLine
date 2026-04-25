@@ -76,6 +76,7 @@ The viewer currently:
 - lists available `.analysis_bundle.json` files from the current map folder
 - loads and parses `analysis_bundle.json`
 - exposes a reload button
+- exposes a pipeline command block with map/nickname/rank/replay-dir propagation
 - shows load status, bundle error text, map name, mine run name, point counts, toggles, and render counters
 - shows current Openplanet user name/login
 - exposes render sliders for center line width, mine line width, problem marker size, and visible problem zone count
@@ -85,7 +86,7 @@ The viewer currently:
 - renders the `mine_line` as a connected in-game overlay line
 - renders `problem_zones` as in-game markers
 - lets `Show Center`, `Show Mine`, and `Show Problem Zones` independently control those layers
-- keeps `Status`, `Data`, `Toggles`, and `Info` as the UI block order
+- keeps `Status`, `Data`, `Pipeline`, `Toggles`, and `Info` as the UI block order
 
 Expected storage location for a relative bundle path:
 
@@ -127,9 +128,17 @@ The first automation stage is implemented:
 - pipeline analysis requires the mine trajectory by default; use `--allow-missing-mine` only for center-only bundles
 - the C# extractor searches all `EntList` entries and uses the best vehicle sample stream, which handles replay files where trajectory samples are not in `EntList[0]`
 
+The Openplanet command handoff stage is implemented:
+
+- the UI generates a PowerShell command for `pipeline.py`
+- the generated command includes current map, current display nickname, selected rank range, and replay input directory
+- the UI can copy the command to the clipboard
+- the command still runs in an external terminal; Openplanet does not execute the pipeline
+- rank range fields are clamped to rank values of at least `1` and a maximum span of `20`
+- no upper leaderboard limit is enforced yet; this should later come from leaderboard metadata
+
 The next pipeline evolution is:
 
-- generate the pipeline command from the Openplanet UI
 - download replay files for a leaderboard range
 - add caching for already downloaded replays and already extracted trajectories
 - verify the pipeline across multiple maps and leaderboard ranges

@@ -9,6 +9,8 @@ void RenderWindow() {
         UI::Separator();
         RenderDataSection();
         UI::Separator();
+        RenderPipelineSection();
+        UI::Separator();
         RenderToggleSection();
         UI::Separator();
         RenderInfoSection();
@@ -43,6 +45,43 @@ void RenderDataSection() {
     }
     if (UI::Button("Reload")) {
         ReloadBundle();
+    }
+}
+
+void RenderPipelineSection() {
+    UI::Text("Pipeline");
+    UpdatePipelineCommand();
+
+    string previousRoot = g_PipelineProjectRoot;
+    int previousRangeFrom = g_PipelineRangeFrom;
+    int previousRangeTo = g_PipelineRangeTo;
+    string previousReplayDir = g_PipelineReplayInputDir;
+
+    g_PipelineProjectRoot = UI::InputText("Project root", g_PipelineProjectRoot);
+    g_PipelineRangeFrom = UI::InputInt("Rank from", g_PipelineRangeFrom);
+    g_PipelineRangeTo = UI::InputInt("Rank to", g_PipelineRangeTo);
+    g_PipelineReplayInputDir = UI::InputText("Replay dir", g_PipelineReplayInputDir);
+    NormalizePipelineRange();
+
+    if (previousRoot != g_PipelineProjectRoot || previousRangeFrom != g_PipelineRangeFrom || previousRangeTo != g_PipelineRangeTo || previousReplayDir != g_PipelineReplayInputDir) {
+        UpdatePipelineCommand();
+        g_PipelineCopyStatus = "";
+    }
+
+    if (UI::Button("Generate command")) {
+        UpdatePipelineCommand();
+        g_PipelineCopyStatus = "";
+    }
+
+    if (UI::Button("Copy command")) {
+        UpdatePipelineCommand();
+        IO::SetClipboard(g_PipelineCommand);
+        g_PipelineCopyStatus = "Copied.";
+    }
+
+    UI::TextWrapped(g_PipelineCommand);
+    if (g_PipelineCopyStatus.Length > 0) {
+        UI::Text(g_PipelineCopyStatus);
     }
 }
 

@@ -117,7 +117,8 @@ Current status:
 - the UI shows load status, error text, map info, mine run name, counts, toggles, and render debug counters
 - the UI shows the current Openplanet user name/login for future automatic player matching
 - the UI shows available bundle files for the current map folder as a combo box
-- the UI block order is `Status`, `Data`, `Toggles`, `Info`
+- the UI block order is `Status`, `Data`, `Pipeline`, `Toggles`, `Info`
+- the UI generates and copies a terminal command for `pipeline.py`
 - the UI exposes runtime render controls for center line width, mine line width, problem zone marker size, and visible problem zone count
 - `center_line` world rendering is implemented
 - `mine_line` world rendering is implemented
@@ -287,10 +288,11 @@ This avoids rewriting working extractor and analytics logic too early.
 The next larger project direction is to move more of the pipeline orchestration into the Openplanet UI:
 
 1. choose leaderboard rank ranges for analysis from the UI
-2. download replay files from the UI
-3. run extraction, analysis, bundle building, and bundle installation automatically
-4. pass the detected map and player identity into scripts instead of relying on hardcoded defaults
-5. support multiple maps and player nicknames without manual path or nickname edits
+2. generate and copy the external pipeline command from the UI
+3. pass the detected map and player nickname into scripts instead of relying on hardcoded defaults
+4. later, download replay files for a leaderboard range
+5. later, run extraction, analysis, bundle building, and bundle installation automatically
+6. support multiple maps and player nicknames without manual path or nickname edits
 
 For now, replay parsing and analytics remain offline scripts.
 
@@ -393,13 +395,14 @@ Current implementation:
 Add UI support in the plugin:
 
 - display current map name
-- display current player login
+- display current player login/name
 - generate CLI command string for pipeline
+- choose leaderboard rank range from/to
 
 Example:
 
 ```powershell
-python pipeline.py --map "<current_map>" --mine "<current_login>" --range "1000-1010"
+python pipeline.py --map "<current_map>" --mine "<current_nickname>" --range "1000-1010"
 ```
 
 Goal:
@@ -407,7 +410,40 @@ Goal:
 - reduce friction between game and pipeline
 - avoid full in-plugin execution for now
 
-### Stage 5 - Replay download (semi-automatic)
+Current implementation:
+
+- the plugin displays current map name and current user login/name
+- the plugin uses the display nickname for `--mine`; login/account id is shown for reference but is not used as the default pipeline identity
+- the plugin exposes editable pipeline project root and replay input directory fields
+- the plugin exposes `Rank from` and `Rank to` fields
+- rank values cannot be below `1`
+- the current maximum rank span is `20`
+- no upper leaderboard limit is enforced yet; this should later come from leaderboard metadata
+- the plugin generates a PowerShell command for `pipeline.py`
+- the plugin can copy the generated command to the clipboard
+- the plugin does not execute external processes
+
+### Stage 5 - Replay preparation handoff
+
+Current lightweight implementation:
+
+- the Openplanet UI does not download replay files yet
+- replay files are expected to already exist in the selected replay input folder
+- the generated command points `pipeline.py` at that folder
+
+```text
+data/raw/replays/<map>/
+```
+
+Goal:
+
+- reduce manual command construction before full replay download automation exists
+
+Future extension note:
+
+- use leaderboard metadata to set the maximum valid `Rank to` value instead of leaving it open-ended
+
+### Stage 6 - Replay download (semi-automatic)
 
 Implement a script to:
 
@@ -422,7 +458,7 @@ Goal:
 
 - eliminate manual replay downloading
 
-### Stage 6 - Full pipeline trigger
+### Stage 7 - Full pipeline trigger
 
 Allow running the full pipeline from a single command:
 
@@ -436,7 +472,7 @@ Later extension:
 
 - optional OpenPlanet button to trigger pipeline
 
-### Stage 7 - Bundle management
+### Stage 8 - Bundle management
 
 Support multiple bundles per map:
 
@@ -450,7 +486,7 @@ Ensure OpenPlanet UI:
 - lists available bundles
 - allows switching between them
 
-### Stage 8 - Caching
+### Stage 9 - Caching
 
 Avoid recomputation when possible:
 
@@ -463,7 +499,7 @@ Goal:
 - faster iteration
 - less redundant work
 
-### Stage 9 - Stability and testing
+### Stage 10 - Stability and testing
 
 Verify full pipeline:
 
@@ -475,7 +511,7 @@ Goal:
 
 - ensure end-to-end reliability
 
-### Stage 10 - Preparation for distribution
+### Stage 11 - Preparation for distribution
 
 Prepare two usage modes:
 

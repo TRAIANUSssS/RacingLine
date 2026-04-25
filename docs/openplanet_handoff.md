@@ -29,6 +29,7 @@ It should not:
 - bundles are loaded from `bundles/{map}/` under Openplanet plugin storage
 - the default bundle filename is `top_1000_1010.analysis_bundle.json`
 - current map detection is implemented from `GetApp().RootMap.MapName`
+- pipeline command generation is implemented in the UI
 - `Show Center`, `Show Mine`, and `Show Problem Zones` toggles are implemented
 - runtime sliders for line widths, marker size, and visible problem zone count are implemented
 - `center_line` world rendering is implemented
@@ -65,6 +66,7 @@ The current viewer can:
 - reload on demand from the UI
 - detect the current map name
 - show the current Openplanet user name/login
+- generate and copy a PowerShell command for `pipeline.py`
 - look for bundles in the detected map folder
 - select available `.analysis_bundle.json` files from a combo box
 - show whether loading succeeded
@@ -89,8 +91,23 @@ Current UI block order:
 
 1. `Status`
 2. `Data`
-3. `Toggles`
-4. `Info`
+3. `Pipeline`
+4. `Toggles`
+5. `Info`
+
+The `Pipeline` block includes:
+
+- editable project root
+- editable leaderboard rank range start/end
+- editable replay input directory
+- generated terminal command
+- copy button for the generated command
+
+Pipeline range rules:
+
+- `Rank from` and `Rank to` cannot be lower than `1`
+- `Rank to` is clamped to `Rank from + 20`
+- no upper leaderboard limit is enforced yet; this should later be read from leaderboard metadata
 
 ## Storage path
 
@@ -117,15 +134,17 @@ The old flat storage path `PluginStorage/RacingLine/analysis_bundle.json` is no 
 3. Add richer zone labels or details only after the marker layer is stable
 4. Avoid redesigning the bundle schema unless the analyzer needs new viewer fields
 
-## Planned pipeline automation
+## Pipeline automation
 
-Future Openplanet work is expected to add:
+Current Openplanet integration is intentionally lightweight:
 
-- leaderboard rank-range selection in the UI
-- replay downloading from the UI
-- automatic replay extraction, analysis, bundle building, and bundle installation
-- automatic map and player identity propagation into scripts
-- robust handling for multiple maps and player nicknames
+- the plugin detects the current map
+- the plugin detects the current user login/name
+- the generated command uses the display nickname for `--mine`, not the account login/id
+- the plugin generates a terminal command for `pipeline.py`
+- the plugin can copy that command to the clipboard
+
+The plugin does not execute external processes and does not download replays. Replay files are still expected to exist under the selected `data/raw/replays/...` folder before running the copied command.
 
 ## Current constraint
 

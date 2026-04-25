@@ -20,6 +20,12 @@ string g_SelectedBundleFileName = DefaultBundleFileName;
 string g_BundlePath = "";
 array<string> g_AvailableBundleFiles;
 int g_SelectedBundleIndex = -1;
+string g_PipelineProjectRoot = PipelineProjectRoot;
+int g_PipelineRangeFrom = PipelineDefaultRangeFrom;
+int g_PipelineRangeTo = PipelineDefaultRangeTo;
+string g_PipelineReplayInputDir = "";
+string g_PipelineCommand = "";
+string g_PipelineCopyStatus = "";
 
 void Main() {
     UpdateCurrentMap(true);
@@ -66,6 +72,8 @@ void UpdateCurrentMap(bool force) {
     g_CurrentMapName = mapName;
     g_CurrentMapFolderName = SanitizePathSegment(mapName);
     g_SelectedBundleFileName = DefaultBundleFileName;
+    g_PipelineReplayInputDir = BuildDefaultReplayInputDir(mapName);
+    UpdatePipelineCommand();
     RefreshBundleFiles();
     ReloadBundle();
 }
@@ -178,4 +186,124 @@ string SanitizePathSegment(const string &in value) {
         return "";
     }
     return result;
+}
+
+void UpdatePipelineCommand() {
+    string mapName = g_CurrentMapName.Length > 0 ? g_CurrentMapName : "<current_map>";
+    string mineNickname = StripTrackmaniaFormatCodes(g_CurrentUserName).Trim();
+    if (mineNickname.Length == 0) {
+        mineNickname = g_CurrentUserLogin;
+    }
+    if (mineNickname.Length == 0) {
+        mineNickname = "<current_nickname>";
+    }
+
+    NormalizePipelineRange();
+
+    string command = "python .\\pipeline.py";
+    command += " --map " + QuotePowerShell(mapName);
+    command += " --mine " + QuotePowerShell(mineNickname);
+    command += " --range " + QuotePowerShell(BuildPipelineRange());
+    if (g_PipelineReplayInputDir.Trim().Length > 0) {
+        command += " --replay-input-dir " + QuotePowerShell(g_PipelineReplayInputDir.Trim());
+    }
+
+    if (g_PipelineProjectRoot.Trim().Length > 0) {
+        g_PipelineCommand = "Set-Location " + QuotePowerShell(g_PipelineProjectRoot.Trim()) + "; " + command;
+    } else {
+        g_PipelineCommand = command;
+    }
+}
+
+void NormalizePipelineRange() {
+    if (g_PipelineRangeFrom < 1) {
+        g_PipelineRangeFrom = 1;
+    }
+    if (g_PipelineRangeTo < 1) {
+        g_PipelineRangeTo = 1;
+    }
+    if (g_PipelineRangeTo < g_PipelineRangeFrom) {
+        g_PipelineRangeTo = g_PipelineRangeFrom;
+    }
+    if (g_PipelineRangeTo - g_PipelineRangeFrom > 20) {
+        g_PipelineRangeTo = g_PipelineRangeFrom + 20;
+    }
+}
+
+string BuildPipelineRange() {
+    return "" + g_PipelineRangeFrom + "-" + g_PipelineRangeTo;
+}
+
+string BuildDefaultReplayInputDir(const string &in mapName) {
+    string number = ExtractTrailingMapNumber(mapName);
+    if (number.Length == 0) {
+        return ".\\data\\raw\\replays";
+    }
+
+    return ".\\data\\raw\\replays\\" + number;
+}
+
+string ExtractTrailingMapNumber(const string &in mapName) {
+    string trimmed = mapName.Trim();
+    string digits = "";
+    for (int i = int(trimmed.Length) - 1; i >= 0; i--) {
+        string ch = trimmed.SubStr(uint(i), 1);
+        if (IsDigit(ch)) {
+            digits = ch + digits;
+            continue;
+        }
+
+        if (digits.Length > 0) {
+            break;
+        }
+    }
+
+    while (digits.Length > 1 && digits.SubStr(0, 1) == "0") {
+        digits = digits.SubStr(1);
+    }
+    return digits;
+}
+
+bool IsDigit(const string &in value) {
+    return value == "0" || value == "1" || value == "2" || value == "3" || value == "4"
+        || value == "5" || value == "6" || value == "7" || value == "8" || value == "9";
+}
+
+string StripTrackmaniaFormatCodes(const string &in value) {
+    string result = "";
+    for (uint i = 0; i < value.Length; i++) {
+        string ch = value.SubStr(i, 1);
+        if (ch != "$") {
+            result += ch;
+            continue;
+        }
+
+        if (i + 3 < value.Length && IsHexDigit(value.SubStr(i + 1, 1)) && IsHexDigit(value.SubStr(i + 2, 1)) && IsHexDigit(value.SubStr(i + 3, 1))) {
+            i += 3;
+        } else if (i + 1 < value.Length) {
+            i += 1;
+        }
+    }
+
+    return result;
+}
+
+bool IsHexDigit(const string &in value) {
+    return IsDigit(value)
+        || value == "a" || value == "b" || value == "c" || value == "d" || value == "e" || value == "f"
+        || value == "A" || value == "B" || value == "C" || value == "D" || value == "E" || value == "F";
+}
+
+string QuotePowerShell(const string &in value) {
+    string escaped = "";
+    for (uint i = 0; i < value.Length; i++) {
+        string ch = value.SubStr(i, 1);
+        if (ch == "\"") {
+            escaped += "`\"";
+        } else {
+            escaped += ch;
+        }
+    }
+
+    return "\"" + escaped + "\"";
 }
