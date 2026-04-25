@@ -25,7 +25,10 @@ It should not:
 - `main.as`, `Config.as`, `Models.as`, `Loader.as`, `Ui.as`, and `Renderer.as` are implemented
 - bundle parsing is implemented
 - UI window is implemented
-- bundle path editing and reload are implemented
+- bundle selection and reload are implemented
+- bundles are loaded from `bundles/{map}/` under Openplanet plugin storage
+- the default bundle filename is `top_1000_1010.analysis_bundle.json`
+- current map detection is implemented from `GetApp().RootMap.MapName`
 - `Show Center`, `Show Mine`, and `Show Problem Zones` toggles are implemented
 - `center_line` world rendering is implemented
 - `mine_line` world rendering is implemented
@@ -36,7 +39,8 @@ It should not:
 
 The viewer should consume:
 
-- `analysis_bundle.json` from Openplanet plugin storage
+- `.analysis_bundle.json` files from Openplanet plugin storage
+- default path: `PluginStorage/RacingLine/bundles/<map>/top_1000_1010.analysis_bundle.json`
 
 The most important bundle fields for the MVP are:
 
@@ -58,7 +62,9 @@ The current viewer can:
 
 - auto-load on startup
 - reload on demand from the UI
-- edit the bundle path from the UI
+- detect the current map name
+- look for bundles in the detected map folder
+- select available `.analysis_bundle.json` files from a combo box
 - show whether loading succeeded
 - show the last error message
 - show:
@@ -77,19 +83,21 @@ The current viewer can:
 
 ## Storage path
 
-If the UI bundle path is relative, the loader resolves it inside Openplanet plugin storage.
+The loader resolves relative bundle paths inside Openplanet plugin storage.
 
-Default expected location:
-
-```text
-C:\Users\<user>\OpenplanetNext\PluginStorage\RacingLine\analysis_bundle.json
-```
-
-That allows the UI field to stay as:
+Default expected location for the current constant range:
 
 ```text
-analysis_bundle.json
+C:\Users\<user>\OpenplanetNext\PluginStorage\RacingLine\bundles\<map>\top_1000_1010.analysis_bundle.json
 ```
+
+Example:
+
+```text
+C:\Users\<user>\OpenplanetNext\PluginStorage\RacingLine\bundles\Spring 2026 - 03\top_1000_1010.analysis_bundle.json
+```
+
+The old flat storage path `PluginStorage/RacingLine/analysis_bundle.json` is no longer the default viewer target.
 
 ## Suggested next rendering work
 

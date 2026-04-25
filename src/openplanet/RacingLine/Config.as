@@ -1,4 +1,5 @@
-string BundlePath = "analysis_bundle.json";
+string BundleRootDirectory = "bundles";
+string DefaultBundleFileName = "top_1000_1010.analysis_bundle.json";
 
 vec4 CenterLineColor = vec4(0.0f, 0.34f, 0.85f, 1.0f);
 vec4 MineLineColor = vec4(1.0f, 0.2f, 0.2f, 1.0f);

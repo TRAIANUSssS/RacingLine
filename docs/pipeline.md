@@ -11,7 +11,7 @@ RacingLine currently works as an offline-first pipeline with an Openplanet in-ga
 5. Inspect plots in `output/plots/<map-name>/`
 6. Inspect processed data in `data/processed/<map-name>/analysis_data.json`
 7. Build `analysis_bundle.json`
-8. Copy or generate that bundle into Openplanet plugin storage
+8. Install that bundle into Openplanet plugin storage under `bundles/<map>/`
 9. Load that bundle from the Openplanet UI
 10. Render `center_line`, `mine_line`, and `problem_zones` in-game through the Openplanet viewer
 
@@ -69,6 +69,9 @@ This layer stabilizes the contract for Openplanet. The bundle now includes:
 The viewer currently:
 
 - resolves bundle paths relative to Openplanet plugin storage
+- detects the current map name from Openplanet
+- uses `bundles/<map>/top_1000_1010.analysis_bundle.json` as the default bundle path
+- lists available `.analysis_bundle.json` files from the current map folder
 - loads and parses `analysis_bundle.json`
 - exposes a reload button
 - shows load status, bundle error text, map name, mine run name, point counts, toggles, and render counters
@@ -80,7 +83,7 @@ The viewer currently:
 
 Expected storage location for a relative bundle path:
 
-- `OpenplanetNext/PluginStorage/RacingLine/analysis_bundle.json`
+- `OpenplanetNext/PluginStorage/RacingLine/bundles/<map>/top_1000_1010.analysis_bundle.json`
 
 ## Common commands
 
@@ -88,12 +91,13 @@ Expected storage location for a relative bundle path:
 .\scripts\extract.ps1
 .\scripts\analyze.ps1 --source-dir ".\data\raw\trajectories\Spring 2026 - 03"
 .\scripts\build_bundle.ps1 --analysis-json ".\data\processed\Spring 2026 - 03\analysis_data.json"
+.\scripts\install_bundle.ps1 -BundlePath ".\data\processed\Spring 2026 - 03\analysis_bundle.json"
 ```
 
 Then place the resulting bundle in Openplanet storage:
 
 ```text
-C:\Users\<user>\OpenplanetNext\PluginStorage\RacingLine\analysis_bundle.json
+C:\Users\<user>\OpenplanetNext\PluginStorage\RacingLine\bundles\Spring 2026 - 03\top_1000_1010.analysis_bundle.json
 ```
 
 ## Default paths

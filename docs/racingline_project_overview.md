@@ -109,9 +109,10 @@ Location: `src/openplanet`
 Current status:
 
 - a working plugin exists in `src/openplanet/RacingLine`
-- the plugin loads `analysis_bundle.json` from plugin storage
+- the plugin detects the current map and loads bundles from `PluginStorage/RacingLine/bundles/<map>/`
+- the default bundle filename is currently `top_1000_1010.analysis_bundle.json`
 - the UI shows load status, error text, map info, mine run name, counts, toggles, and render debug counters
-- the UI bundle path field is editable and reloadable
+- the UI shows available bundle files for the current map folder as a combo box
 - `center_line` world rendering is implemented
 - `mine_line` world rendering is implemented
 - `problem_zones` world marker rendering is implemented

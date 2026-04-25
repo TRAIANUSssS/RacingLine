@@ -1,6 +1,6 @@
 # Analysis Bundle Schema
 
-`analysis_bundle.json` is the stable handoff artifact between the offline Python analyzer and the future Openplanet viewer.
+`analysis_bundle.json` is the stable handoff artifact between the offline Python analyzer and the Openplanet viewer.
 
 Current schema version: `1`
 
@@ -163,4 +163,3 @@ That means element `i` in each array refers to the same normalized progress samp
 - `y` is resampled with the same interpolation logic as `x` and `z`
 - centerline `y` is computed with the same median aggregation used for `x` and `z`
 - `problem_zones` coordinates are copied from the matching `center_line` point
-

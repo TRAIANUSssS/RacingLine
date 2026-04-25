@@ -18,7 +18,27 @@ void RenderWindow() {
 
 void RenderDataSection() {
     UI::Text("Data");
-    g_BundlePath = UI::InputText("Bundle path", g_BundlePath);
+    UI::Text("Current map: " + (g_CurrentMapName.Length > 0 ? g_CurrentMapName : "-"));
+    UI::Text("Bundle folder: " + (g_CurrentMapFolderName.Length > 0 ? BundleRootDirectory + "/" + g_CurrentMapFolderName : "-"));
+
+    if (g_AvailableBundleFiles.Length == 0) {
+        UI::Text("Bundle: " + g_SelectedBundleFileName);
+    } else if (UI::BeginCombo("Bundle", g_SelectedBundleFileName)) {
+        for (uint i = 0; i < g_AvailableBundleFiles.Length; i++) {
+            bool isSelected = int(i) == g_SelectedBundleIndex;
+            if (UI::Selectable(g_AvailableBundleFiles[i], isSelected)) {
+                g_SelectedBundleFileName = g_AvailableBundleFiles[i];
+                g_SelectedBundleIndex = int(i);
+                ReloadBundle();
+            }
+        }
+        UI::EndCombo();
+    }
+
+    UI::Text("Bundle path: " + (g_BundlePath.Length > 0 ? g_BundlePath : BuildCurrentMapBundlePath(g_SelectedBundleFileName)));
+    if (UI::Button("Refresh bundles")) {
+        RefreshBundleFiles();
+    }
     if (UI::Button("Reload")) {
         ReloadBundle();
     }
@@ -51,6 +71,7 @@ void RenderInfoSection() {
     }
 
     UI::Text("Map: " + (g_Bundle.mapName.Length > 0 ? g_Bundle.mapName : "-"));
+    UI::Text("Current map: " + (g_CurrentMapName.Length > 0 ? g_CurrentMapName : "-"));
     UI::Text("Mine run: " + (g_Bundle.mineRunName.Length > 0 ? g_Bundle.mineRunName : "-"));
     UI::Text("Center points: " + g_Bundle.centerLine.Length);
     UI::Text("Mine points: " + g_Bundle.mineLine.Length);
