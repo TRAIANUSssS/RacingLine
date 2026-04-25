@@ -63,6 +63,7 @@ The current viewer can:
 - auto-load on startup
 - reload on demand from the UI
 - detect the current map name
+- show the current Openplanet user name/login
 - look for bundles in the detected map folder
 - select available `.analysis_bundle.json` files from a combo box
 - show whether loading succeeded
@@ -78,6 +79,7 @@ The current viewer can:
   - projected/skipped problem zone counts
 - project world positions through the official `Camera` dependency
 - draw the `center_line` as a connected overlay line when `Show Center` is enabled
+- recolor the center line by speed delta when `Color Center By Speed Delta` is enabled
 - draw the `mine_line` as a connected overlay line when `Show Mine` is enabled
 - draw problem zone markers when `Show Problem Zones` is enabled
 

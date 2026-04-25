@@ -63,6 +63,7 @@ What happens:
 - runs are resampled on a shared normalized progress grid
 - `x`, `y`, `z`, and `speed` are interpolated on that grid
 - a median center line is computed
+- runs matching the current excluded nickname are not used for center line and spread computation
 - spread is computed from the horizontal `x/z` variation
 - mine deviation is computed against the center line
 - importance is computed as:
@@ -112,11 +113,13 @@ Current status:
 - the plugin detects the current map and loads bundles from `PluginStorage/RacingLine/bundles/<map>/`
 - the default bundle filename is currently `top_1000_1010.analysis_bundle.json`
 - the UI shows load status, error text, map info, mine run name, counts, toggles, and render debug counters
+- the UI shows the current Openplanet user name/login for future automatic player matching
 - the UI shows available bundle files for the current map folder as a combo box
 - `center_line` world rendering is implemented
 - `mine_line` world rendering is implemented
 - `problem_zones` world marker rendering is implemented
 - `Show Center`, `Show Mine`, and `Show Problem Zones` toggles control rendering independently
+- `Color Center By Speed Delta` recolors the center line from red to green using `mine_speed - center_speed`
 - projection now uses the official Openplanet `Camera` dependency instead of manual camera math
 
 Design rule:
@@ -224,6 +227,7 @@ Top important peaks filtered so they are not too close to each other on progress
 Interpretation:
 
 - helps distinguish harmless geometric variation from speed-losing mistakes
+- in the viewer, the most negative visible delta is bright red and the most positive visible delta is bright green
 
 ## Current repository structure
 

@@ -19,6 +19,8 @@ void RenderWindow() {
 void RenderDataSection() {
     UI::Text("Data");
     UI::Text("Current map: " + (g_CurrentMapName.Length > 0 ? g_CurrentMapName : "-"));
+    UI::Text("Current user: " + (g_CurrentUserName.Length > 0 ? g_CurrentUserName : "-"));
+    UI::Text("Current login: " + (g_CurrentUserLogin.Length > 0 ? g_CurrentUserLogin : "-"));
     UI::Text("Bundle folder: " + (g_CurrentMapFolderName.Length > 0 ? BundleRootDirectory + "/" + g_CurrentMapFolderName : "-"));
 
     if (g_AvailableBundleFiles.Length == 0) {
@@ -88,6 +90,7 @@ void RenderInfoSection() {
 void RenderToggleSection() {
     UI::Text("Toggles");
     g_ShowCenter = UI::Checkbox("Show Center", g_ShowCenter);
+    g_ColorCenterBySpeedDelta = UI::Checkbox("Color Center By Speed Delta", g_ColorCenterBySpeedDelta);
     g_ShowMine = UI::Checkbox("Show Mine", g_ShowMine);
     g_ShowProblemZones = UI::Checkbox("Show Problem Zones", g_ShowProblemZones);
 }

@@ -57,9 +57,12 @@ Each item describes one raw trajectory used in the batch:
 {
   "name": "run name",
   "point_count": 455,
-  "has_speed": true
+  "has_speed": true,
+  "used_for_center": true
 }
 ```
+
+`used_for_center` is false for runs excluded from center line and spread computation, for example the current player's own run.
 
 ## `center_line`
 

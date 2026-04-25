@@ -43,6 +43,11 @@ def main() -> None:
         help="Name fragment used to identify the user's trajectory.",
     )
     parser.add_argument(
+        "--exclude-center-nickname",
+        default=DEFAULT_HIGHLIGHT_NICKNAME,
+        help="Name fragment excluded from center/spread computation.",
+    )
+    parser.add_argument(
         "--samples",
         type=int,
         default=300,
@@ -57,6 +62,7 @@ def main() -> None:
         source_dir=args.source_dir,
         highlight_nickname=args.highlight_nickname,
         common_progress=common_progress,
+        exclude_center_nickname=args.exclude_center_nickname,
     )
 
     if not args.skip_plots:

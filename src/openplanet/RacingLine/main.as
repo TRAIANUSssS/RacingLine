@@ -6,9 +6,12 @@ bool g_ShowWindow = true;
 bool g_ShowCenter = true;
 bool g_ShowMine = true;
 bool g_ShowProblemZones = true;
+bool g_ColorCenterBySpeedDelta = false;
 
 string g_CurrentMapName = "";
 string g_CurrentMapFolderName = "";
+string g_CurrentUserName = "";
+string g_CurrentUserLogin = "";
 string g_SelectedBundleFileName = DefaultBundleFileName;
 string g_BundlePath = "";
 array<string> g_AvailableBundleFiles;
@@ -25,6 +28,7 @@ void RenderMenu() {
 }
 
 void Render() {
+    UpdateCurrentUser();
     UpdateCurrentMap(false);
     RenderWindow();
     RenderWorldOverlay();
@@ -69,6 +73,18 @@ string GetCurrentMapName() {
     }
 
     return string(app.RootMap.MapName).Trim();
+}
+
+void UpdateCurrentUser() {
+    CTrackMania@ app = cast<CTrackMania>(GetApp());
+    if (app is null || app.LocalPlayerInfo is null) {
+        g_CurrentUserName = "";
+        g_CurrentUserLogin = "";
+        return;
+    }
+
+    g_CurrentUserName = string(app.LocalPlayerInfo.Name).Trim();
+    g_CurrentUserLogin = string(app.LocalPlayerInfo.Login).Trim();
 }
 
 void RefreshBundleFiles() {

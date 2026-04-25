@@ -16,6 +16,7 @@ def analyze_source_dir(
     common_progress: np.ndarray,
     max_problem_zones: int = 5,
     min_peak_distance: int = 12,
+    exclude_center_nickname: str | None = None,
 ) -> AnalysisResult:
     source_dir = source_dir.resolve()
     if not source_dir.exists() or not source_dir.is_dir():
@@ -56,14 +57,25 @@ def analyze_source_dir(
         raw_trajectories.append(raw)
         resampled_trajectories.append(resampled)
 
-        if highlight_nickname and highlight_nickname.lower() in name.lower():
+        if _name_matches_nickname(name, highlight_nickname):
             mine_raw = raw
             mine_resampled = resampled
 
     if len(resampled_trajectories) < 2:
         raise ValueError("Not enough usable trajectories for center/spread analysis (need at least 2).")
 
-    center_x, center_y, center_z, center_speed, spread = build_center_trajectory(resampled_trajectories)
+    center_source_trajectories = [
+        item
+        for item in resampled_trajectories
+        if not _name_matches_nickname(item.name, exclude_center_nickname)
+    ]
+    if len(center_source_trajectories) < 2:
+        raise ValueError(
+            "Not enough usable trajectories for center/spread analysis after nickname exclusion "
+            f"(need at least 2, got {len(center_source_trajectories)})."
+        )
+
+    center_x, center_y, center_z, center_speed, spread = build_center_trajectory(center_source_trajectories)
 
     deviation: np.ndarray | None = None
     importance: np.ndarray | None = None
@@ -98,6 +110,7 @@ def analyze_source_dir(
         map_name=source_dir.name,
         raw_trajectories=raw_trajectories,
         resampled_trajectories=resampled_trajectories,
+        center_source_trajectories=center_source_trajectories,
         common_progress=common_progress,
         center_x=center_x,
         center_y=center_y,
@@ -111,3 +124,9 @@ def analyze_source_dir(
         problem_zones=problem_zones,
         speed_delta=speed_delta,
     )
+
+
+def _name_matches_nickname(name: str, nickname: str | None) -> bool:
+    if nickname is None or nickname.strip() == "":
+        return False
+    return nickname.lower() in name.lower()

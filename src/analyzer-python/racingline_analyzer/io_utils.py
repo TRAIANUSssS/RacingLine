@@ -126,6 +126,7 @@ def export_analysis_data(output_path: Path, result: AnalysisResult) -> None:
                 "name": item.name,
                 "point_count": int(item.x.size),
                 "has_speed": item.speed is not None,
+                "used_for_center": any(center_item.name == item.name for center_item in result.center_source_trajectories),
             }
             for item in result.raw_trajectories
         ],

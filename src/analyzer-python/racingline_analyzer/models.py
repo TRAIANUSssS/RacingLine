@@ -30,6 +30,7 @@ class AnalysisResult:
     map_name: str
     raw_trajectories: list[RawTrajectory]
     resampled_trajectories: list[ResampledTrajectory]
+    center_source_trajectories: list[ResampledTrajectory]
     common_progress: np.ndarray
     center_x: np.ndarray
     center_y: np.ndarray

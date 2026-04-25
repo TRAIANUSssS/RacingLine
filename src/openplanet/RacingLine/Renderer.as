@@ -40,6 +40,11 @@ void DrawCenterLine() {
         return;
     }
 
+    if (g_ColorCenterBySpeedDelta && g_Bundle.analysisPoints.Length >= g_Bundle.centerLine.Length) {
+        DrawSpeedDeltaCenterLine();
+        return;
+    }
+
     nvg::BeginPath();
     nvg::StrokeWidth(CenterLineWidth);
     nvg::StrokeColor(CenterLineColor);
@@ -72,6 +77,84 @@ void DrawCenterLine() {
     if (g_LastProjectedCenterSegments > 0) {
         nvg::Stroke();
     }
+}
+
+void DrawSpeedDeltaCenterLine() {
+    float minDelta = 0.0f;
+    float maxDelta = 0.0f;
+    bool hasDelta = false;
+
+    for (uint i = 0; i < g_Bundle.analysisPoints.Length; i++) {
+        AnalysisPoint@ point = g_Bundle.analysisPoints[i];
+        if (point is null) {
+            continue;
+        }
+
+        if (!hasDelta) {
+            minDelta = point.speedDelta;
+            maxDelta = point.speedDelta;
+            hasDelta = true;
+        } else {
+            minDelta = Math::Min(minDelta, point.speedDelta);
+            maxDelta = Math::Max(maxDelta, point.speedDelta);
+        }
+    }
+
+    if (!hasDelta) {
+        return;
+    }
+
+    for (uint i = 1; i < g_Bundle.centerLine.Length; i++) {
+        CenterPoint@ prev = g_Bundle.centerLine[i - 1];
+        CenterPoint@ curr = g_Bundle.centerLine[i];
+        if (prev is null || curr is null) {
+            continue;
+        }
+
+        vec2 a;
+        vec2 b;
+        if (!ProjectWorldPoint(prev.pos, a) || !ProjectWorldPoint(curr.pos, b)) {
+            g_LastSkippedCenterSegments++;
+            continue;
+        }
+
+        AnalysisPoint@ prevAnalysis = g_Bundle.analysisPoints[i - 1];
+        AnalysisPoint@ currAnalysis = g_Bundle.analysisPoints[i];
+        float segmentDelta = 0.0f;
+        if (prevAnalysis !is null && currAnalysis !is null) {
+            segmentDelta = (prevAnalysis.speedDelta + currAnalysis.speedDelta) * 0.5f;
+        } else if (currAnalysis !is null) {
+            segmentDelta = currAnalysis.speedDelta;
+        }
+
+        nvg::BeginPath();
+        nvg::MoveTo(a);
+        nvg::LineTo(b);
+        nvg::StrokeWidth(CenterLineWidth);
+        nvg::StrokeColor(SpeedDeltaColor(segmentDelta, minDelta, maxDelta));
+        nvg::Stroke();
+        g_LastProjectedCenterSegments++;
+    }
+}
+
+vec4 SpeedDeltaColor(float delta, float minDelta, float maxDelta) {
+    if (maxDelta <= minDelta) {
+        return CenterLineColor;
+    }
+
+    float t = (delta - minDelta) / (maxDelta - minDelta);
+    if (t < 0.0f) {
+        t = 0.0f;
+    } else if (t > 1.0f) {
+        t = 1.0f;
+    }
+
+    return vec4(
+        SpeedDeltaNegativeColor.x + (SpeedDeltaPositiveColor.x - SpeedDeltaNegativeColor.x) * t,
+        SpeedDeltaNegativeColor.y + (SpeedDeltaPositiveColor.y - SpeedDeltaNegativeColor.y) * t,
+        SpeedDeltaNegativeColor.z + (SpeedDeltaPositiveColor.z - SpeedDeltaNegativeColor.z) * t,
+        SpeedDeltaNegativeColor.w + (SpeedDeltaPositiveColor.w - SpeedDeltaNegativeColor.w) * t
+    );
 }
 
 void DrawMineLine() {

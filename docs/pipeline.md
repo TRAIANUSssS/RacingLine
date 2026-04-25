@@ -44,6 +44,8 @@ This layer resamples runs over a shared progress grid and computes:
 - speed delta
 - problem zones
 
+Runs matching the excluded center nickname are still exported and can still be used as `mine_line`, but they are excluded from center line and spread computation. The current default excluded nickname is `TRAIANUSssS`.
+
 ### Bundle
 
 - Code: `src/analyzer-python/bundle_builder.py`
@@ -77,6 +79,7 @@ The viewer currently:
 - shows load status, bundle error text, map name, mine run name, point counts, toggles, and render counters
 - projects world points through the official Openplanet `Camera` dependency
 - renders the `center_line` as a connected in-game overlay line
+- can recolor the center line by `speed_delta` from red (mine slower) to green (mine faster)
 - renders the `mine_line` as a connected in-game overlay line
 - renders `problem_zones` as in-game markers
 - lets `Show Center`, `Show Mine`, and `Show Problem Zones` independently control those layers
