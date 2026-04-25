@@ -4,7 +4,9 @@ param(
 
     [string]$StorageRoot = (Join-Path $env:USERPROFILE "OpenplanetNext\PluginStorage\RacingLine"),
 
-    [string]$RangeName = "1000_1010"
+    [string]$RangeName = "1000_1010",
+
+    [string]$BundleName = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -29,7 +31,11 @@ if ([string]::IsNullOrWhiteSpace($mapFolder)) {
 }
 
 $targetDir = Join-Path $StorageRoot (Join-Path "bundles" $mapFolder)
-$targetName = "top_$RangeName.analysis_bundle.json"
+$targetName = if ([string]::IsNullOrWhiteSpace($BundleName)) {
+    "top_$RangeName.analysis_bundle.json"
+} else {
+    $BundleName
+}
 $targetPath = Join-Path $targetDir $targetName
 
 New-Item -ItemType Directory -Force -Path $targetDir | Out-Null

@@ -4,13 +4,13 @@ RacingLine currently works as an offline-first pipeline with an Openplanet in-ga
 
 ## End-to-end flow
 
-1. Put `.Replay.Gbx` files in `data/raw/replays`
+1. Put `.Replay.Gbx` files in `data/raw/replays` or a selected subfolder such as `data/raw/replays/2`
 2. Run the C# extractor
 3. Inspect generated trajectory JSON in `data/raw/trajectories/<map-name>/`
 4. Run the Python analyzer for one map
 5. Inspect plots in `output/plots/<map-name>/`
 6. Inspect processed data in `data/processed/<map-name>/analysis_data.json`
-7. Build `analysis_bundle.json`
+7. Build a named `.analysis_bundle.json` bundle
 8. Install that bundle into Openplanet plugin storage under `bundles/<map>/`
 9. Load that bundle from the Openplanet UI
 10. Render `center_line`, `mine_line`, and `problem_zones` in-game through the Openplanet viewer
@@ -21,10 +21,10 @@ RacingLine currently works as an offline-first pipeline with an Openplanet in-ga
 
 - Code: `src/extractor-csharp`
 - Entry point: `Program.cs`
-- Reads: `data/raw/replays`
+- Reads: `data/raw/replays` or the selected replay input directory
 - Writes: `data/raw/trajectories`
 
-This layer parses `.Replay.Gbx` files and exports raw points with `t/x/y/z/speed`.
+This layer parses `.Replay.Gbx` files and exports raw points with `t/x/y/z/speed`. It scans only the selected directory by default and reads nested directories only with `--recursive`.
 
 ### Analysis
 
@@ -50,7 +50,7 @@ Runs matching the excluded center nickname are still exported and can still be u
 
 - Code: `src/analyzer-python/bundle_builder.py`
 - Reads: `data/processed/<map-name>/analysis_data.json`
-- Writes: `data/processed/<map-name>/analysis_bundle.json`
+- Writes: `data/processed/<map-name>/<bundle-name>.analysis_bundle.json`
 
 This layer stabilizes the contract for Openplanet. The bundle now includes:
 
@@ -94,27 +94,45 @@ Expected storage location for a relative bundle path:
 ## Common commands
 
 ```powershell
-.\scripts\extract.ps1
-.\scripts\analyze.ps1 --source-dir ".\data\raw\trajectories\Spring 2026 - 03"
-.\scripts\build_bundle.ps1 --analysis-json ".\data\processed\Spring 2026 - 03\analysis_data.json"
-.\scripts\install_bundle.ps1 -BundlePath ".\data\processed\Spring 2026 - 03\analysis_bundle.json"
+python .\pipeline.py --map "Spring 2026 - 02" --mine "TRAIANUSssS" --range "1000-1010" --replay-input-dir ".\data\raw\replays\2"
 ```
 
-The install step copies the resulting bundle to Openplanet storage:
+This runs extraction, analysis, bundle building, and bundle installation. The installed bundle follows this naming convention:
 
 ```text
-C:\Users\<user>\OpenplanetNext\PluginStorage\RacingLine\bundles\Spring 2026 - 03\top_1000_1010.analysis_bundle.json
+C:\Users\<user>\OpenplanetNext\PluginStorage\RacingLine\bundles\Spring 2026 - 02\top_1000_1010.analysis_bundle.json
 ```
+
+Individual stages can still be run directly:
+
+```powershell
+.\scripts\extract.ps1 --replay-dir ".\data\raw\replays\2" --output-root ".\data\raw\trajectories" --map "Spring 2026 - 02"
+.\scripts\analyze.ps1 --map "Spring 2026 - 02" --mine "TRAIANUSssS" --expected-map-prefix "Spring 2026 - 02" --require-mine
+.\scripts\build_bundle.ps1 --map "Spring 2026 - 02" --range "1000-1010"
+.\scripts\install_bundle.ps1 -BundlePath ".\data\processed\Spring 2026 - 02\top_1000_1010.analysis_bundle.json" -BundleName "top_1000_1010.analysis_bundle.json"
+```
+
+Replay extraction scans only the selected replay directory by default. Nested map folders such as `data/raw/replays/1` or `data/raw/replays/9` are not scanned when the selected input directory is `data/raw/replays`. Use `--recursive-replays` on `pipeline.py` or `--recursive` on `extract.ps1` only when nested scanning is explicitly wanted.
+
+Before extraction, `pipeline.py` removes old trajectory JSON files from `data/raw/trajectories/<map>/` unless `--keep-old-trajectories` is passed. Before analysis, it also removes old generated plot files from `output/plots/<map>/` unless `--keep-old-plots` is passed. This prevents stale data from older maps from being mixed into a new bundle.
 
 ## Planned automation
 
-The intended next pipeline evolution is:
+The first automation stage is implemented:
 
-- select leaderboard rank ranges from the Openplanet UI
-- download replay files from the Openplanet UI
-- run extraction, analysis, bundle building, and installation automatically
-- pass detected map and player identity into scripts instead of relying on manual constants
-- support multiple maps and player nicknames without manual path edits
+- `pipeline.py` is the unified entry point
+- map, player identity, replay input directory, bundle filename, and rank range are CLI parameters
+- bundle installation is automatic unless `--skip-install` is passed
+- stale trajectory and plot outputs are cleaned automatically unless `--keep-old-trajectories` or `--keep-old-plots` is passed
+- pipeline analysis requires the mine trajectory by default; use `--allow-missing-mine` only for center-only bundles
+- the C# extractor searches all `EntList` entries and uses the best vehicle sample stream, which handles replay files where trajectory samples are not in `EntList[0]`
+
+The next pipeline evolution is:
+
+- generate the pipeline command from the Openplanet UI
+- download replay files for a leaderboard range
+- add caching for already downloaded replays and already extracted trajectories
+- verify the pipeline across multiple maps and leaderboard ranges
 
 ## Default paths
 

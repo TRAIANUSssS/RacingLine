@@ -34,7 +34,7 @@ Location: `src/extractor-csharp`
 
 Input:
 
-- Trackmania `.Replay.Gbx` files from `data/raw/replays`
+- Trackmania `.Replay.Gbx` files from `data/raw/replays` or a selected replay subfolder such as `data/raw/replays/2`
 
 Output:
 
@@ -47,6 +47,8 @@ Point format:
 ```
 
 This layer uses C# and GBX.NET because replay parsing is already working there and should stay outside Openplanet.
+
+The extractor scans only the selected replay directory by default. Nested folders are included only with `--recursive`.
 
 ### 2. Analysis
 
@@ -89,7 +91,7 @@ Input:
 
 Output:
 
-- `data/processed/<map-name>/analysis_bundle.json`
+- `data/processed/<map-name>/<bundle-name>.analysis_bundle.json`
 
 This is the main bridge between offline analytics and the Openplanet viewer.
 
@@ -269,7 +271,7 @@ The current implemented MVP is:
 
 1. extract replay data offline
 2. analyze runs offline
-3. build one stable `analysis_bundle.json`
+3. build one stable `.analysis_bundle.json` bundle
 4. install that bundle into `PluginStorage/RacingLine/bundles/<map>/`
 5. load that bundle in Openplanet based on the current map
 6. confirm bundle loading and metadata in UI
@@ -302,3 +304,193 @@ Think about the project as:
 - Viewer: JSON -> in-game overlay
 
 That separation should guide future code and documentation updates.
+
+## MVP v2 Plan (Automation Phase)
+
+The next stage of the project focuses on automating the offline pipeline and reducing manual steps.
+
+### Stage 1 - Unified pipeline script
+
+Create a single entrypoint script:
+
+```powershell
+python pipeline.py --map "<map_name>" --mine "<player_login>" --range "<rank_range>"
+```
+
+This script should:
+
+1. run replay extraction (C#)
+2. run trajectory analysis (Python)
+3. build a named `.analysis_bundle.json` bundle
+4. copy the bundle into `PluginStorage/RacingLine/bundles/<map>/`
+
+Goal:
+
+- remove the need to manually run multiple commands
+- make the pipeline reproducible and parameter-driven
+
+Current implementation:
+
+- `pipeline.py` exists at the repository root
+- the default bundle filename is `top_<range>.analysis_bundle.json`, with hyphens normalized to underscores
+- installation can be skipped with `--skip-install`
+- extraction can be skipped with `--skip-extract` when trajectory JSON already exists
+- old trajectory JSON files are removed from `data/raw/trajectories/<map>/` before extraction unless `--keep-old-trajectories` is passed
+- old generated plot files are removed from `output/plots/<map>/` before analysis unless `--keep-old-plots` is passed
+- mine trajectory presence is required by default; `--allow-missing-mine` allows center-only bundles explicitly
+
+### Stage 2 - Parameterization
+
+Remove hardcoded values from scripts.
+
+Scripts now accept the main runtime values via CLI:
+
+- map name
+- player login / nickname
+- replay input directory
+- output bundle name
+- leaderboard rank range
+
+Goal:
+
+- no manual edits inside code
+- everything controlled via CLI arguments
+
+Implemented entry points:
+
+```powershell
+python pipeline.py --map "Spring 2026 - 02" --mine "TRAIANUSssS" --range "1000-1010" --replay-input-dir ".\data\raw\replays\2"
+.\scripts\extract.ps1 --replay-dir ".\data\raw\replays\2" --output-root ".\data\raw\trajectories" --map "Spring 2026 - 02"
+.\scripts\analyze.ps1 --map "Spring 2026 - 02" --mine "TRAIANUSssS" --expected-map-prefix "Spring 2026 - 02" --require-mine
+.\scripts\build_bundle.ps1 --map "Spring 2026 - 02" --range "1000-1010"
+.\scripts\install_bundle.ps1 -BundlePath ".\data\processed\Spring 2026 - 02\top_1000_1010.analysis_bundle.json" -BundleName "top_1000_1010.analysis_bundle.json"
+```
+
+### Stage 3 - Automatic bundle installation
+
+After building the bundle, the pipeline should:
+
+- automatically place it into the correct Openplanet storage folder
+- follow naming convention:
+
+```text
+bundles/<map>/top_<range>.analysis_bundle.json
+```
+
+Goal:
+
+- viewer immediately sees new bundles without manual copying
+
+Current implementation:
+
+- `pipeline.py` installs the bundle automatically by default
+- installation can be disabled with `--skip-install`
+- the storage root can be overridden with `--storage-root`
+- the installed filename defaults to `top_<range>.analysis_bundle.json`
+
+### Stage 4 - OpenPlanet integration (lightweight)
+
+Add UI support in the plugin:
+
+- display current map name
+- display current player login
+- generate CLI command string for pipeline
+
+Example:
+
+```powershell
+python pipeline.py --map "<current_map>" --mine "<current_login>" --range "1000-1010"
+```
+
+Goal:
+
+- reduce friction between game and pipeline
+- avoid full in-plugin execution for now
+
+### Stage 5 - Replay download (semi-automatic)
+
+Implement a script to:
+
+- fetch replay/ghost files for a leaderboard rank range
+- store them in:
+
+```text
+data/raw/replays/<map>/
+```
+
+Goal:
+
+- eliminate manual replay downloading
+
+### Stage 6 - Full pipeline trigger
+
+Allow running the full pipeline from a single command:
+
+```powershell
+full_pipeline.bat
+```
+
+or Python equivalent.
+
+Later extension:
+
+- optional OpenPlanet button to trigger pipeline
+
+### Stage 7 - Bundle management
+
+Support multiple bundles per map:
+
+```text
+top_100_110.analysis_bundle.json
+top_1000_1010.analysis_bundle.json
+```
+
+Ensure OpenPlanet UI:
+
+- lists available bundles
+- allows switching between them
+
+### Stage 8 - Caching
+
+Avoid recomputation when possible:
+
+- reuse already downloaded replays
+- skip already processed trajectories
+- skip bundle rebuild if inputs unchanged
+
+Goal:
+
+- faster iteration
+- less redundant work
+
+### Stage 9 - Stability and testing
+
+Verify full pipeline:
+
+- from raw replays to in-game visualization
+- across multiple maps
+- across different leaderboard ranges
+
+Goal:
+
+- ensure end-to-end reliability
+
+### Stage 10 - Preparation for distribution
+
+Prepare two usage modes:
+
+1. Developer mode (current):
+   - full pipeline (C# + Python + OpenPlanet)
+2. User mode (future):
+   - OpenPlanet viewer plugin
+   - consumes prebuilt bundles
+
+Decision point:
+
+- whether to move parts of pipeline into AngelScript
+- or keep heavy processing external
+
+Current recommendation:
+
+- keep extraction and analytics outside OpenPlanet
+- publish viewer-first plugin initially

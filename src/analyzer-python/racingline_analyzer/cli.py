@@ -14,7 +14,7 @@ from .io_utils import (
     save_problem_zones_csv,
     save_problem_zones_json,
 )
-from .paths import DEFAULT_HIGHLIGHT_NICKNAME, DEFAULT_SOURCE_DIR
+from .paths import DEFAULT_HIGHLIGHT_NICKNAME, DEFAULT_SOURCE_DIR, RAW_TRAJECTORIES_DIR
 from .plotting import (
     plot_center_speed,
     plot_deviation,
@@ -38,9 +38,25 @@ def main() -> None:
         help="Directory with trajectory JSON files.",
     )
     parser.add_argument(
+        "--map",
+        dest="map_name",
+        default=None,
+        help="Map folder name under data/raw/trajectories. Used when --source-dir is not provided.",
+    )
+    parser.add_argument(
         "--highlight-nickname",
         default=DEFAULT_HIGHLIGHT_NICKNAME,
         help="Name fragment used to identify the user's trajectory.",
+    )
+    parser.add_argument(
+        "--mine",
+        default=None,
+        help="Alias for --highlight-nickname and default --exclude-center-nickname.",
+    )
+    parser.add_argument(
+        "--expected-map-prefix",
+        default=None,
+        help="Require trajectory filenames to start with this map prefix.",
     )
     parser.add_argument(
         "--exclude-center-nickname",
@@ -55,15 +71,33 @@ def main() -> None:
     )
     parser.add_argument("--skip-plots", action="store_true", help="Do not write PNG/CSV plot outputs.")
     parser.add_argument("--skip-processed", action="store_true", help="Do not write processed analysis JSON.")
+    parser.add_argument("--require-mine", action="store_true", help="Fail if the highlighted/mine trajectory is not found.")
     args = parser.parse_args()
+
+    source_dir = args.source_dir
+    if args.map_name is not None and source_dir == DEFAULT_SOURCE_DIR:
+        source_dir = RAW_TRAJECTORIES_DIR / args.map_name
+
+    highlight_nickname = args.mine or args.highlight_nickname
+    exclude_center_nickname = args.exclude_center_nickname
+    if args.mine is not None and exclude_center_nickname == DEFAULT_HIGHLIGHT_NICKNAME:
+        exclude_center_nickname = args.mine
+
+    if args.expected_map_prefix is not None:
+        validate_expected_map_prefix(source_dir, args.expected_map_prefix)
 
     common_progress = np.linspace(0.0, 1.0, args.samples)
     result = analyze_source_dir(
-        source_dir=args.source_dir,
-        highlight_nickname=args.highlight_nickname,
+        source_dir=source_dir,
+        highlight_nickname=highlight_nickname,
         common_progress=common_progress,
-        exclude_center_nickname=args.exclude_center_nickname,
+        exclude_center_nickname=exclude_center_nickname,
     )
+    if args.require_mine and result.mine_resampled is None:
+        raise ValueError(
+            f"Mine trajectory was not found for nickname/login '{highlight_nickname}' in {source_dir}. "
+            "Check replay extraction failures or rerun with --allow-missing-mine for a center-only bundle."
+        )
 
     if not args.skip_plots:
         write_plot_outputs(result)
@@ -73,6 +107,28 @@ def main() -> None:
         analysis_data_path = processed_dir / "analysis_data.json"
         export_analysis_data(analysis_data_path, result)
         print(f"Saved: {analysis_data_path}")
+
+
+def validate_expected_map_prefix(source_dir: Path, expected_map_prefix: str) -> None:
+    if not source_dir.exists():
+        return
+
+    expected_prefix = f"{expected_map_prefix}_"
+    mismatched_files = [
+        path.name
+        for path in source_dir.glob("*.json")
+        if path.is_file() and not path.name.startswith(expected_prefix)
+    ]
+    if not mismatched_files:
+        return
+
+    preview = "\n".join(f"- {name}" for name in mismatched_files[:10])
+    extra = "" if len(mismatched_files) <= 10 else f"\n... and {len(mismatched_files) - 10} more"
+    raise ValueError(
+        "Trajectory source directory contains files that do not match the requested map prefix "
+        f"'{expected_map_prefix}'. Clean the directory or run pipeline without --keep-old-trajectories.\n"
+        f"{preview}{extra}"
+    )
 
 
 def write_plot_outputs(result) -> None:

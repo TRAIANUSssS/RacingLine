@@ -16,6 +16,7 @@ Gbx.ZLib = new ZLib();
 var repositoryRoot = FindRepositoryRoot(Environment.CurrentDirectory);
 var defaultReplayDirectory = Path.Combine(repositoryRoot, "data", "raw", "replays");
 var defaultOutputRootDirectory = Path.Combine(repositoryRoot, "data", "raw", "trajectories");
+var options = ExtractorOptions.Parse(args, defaultReplayDirectory, defaultOutputRootDirectory);
 
 var jsonOptions = new JsonSerializerOptions
 {
@@ -24,35 +25,44 @@ var jsonOptions = new JsonSerializerOptions
 
 try
 {
-    if (args.Length > 0 && File.Exists(args[0]))
+    if (options.HelpRequested)
     {
-        var singleOutputPath = args.Length > 1
-            ? args[1]
-            : Path.Combine(
-                Path.GetDirectoryName(args[0]) ?? Environment.CurrentDirectory,
-                $"{Path.GetFileNameWithoutExtension(args[0])}.trajectory.json");
+        PrintUsage();
+        return;
+    }
 
-        var singleResult = ProcessReplayFile(args[0], singleOutputPath, jsonOptions);
+    if (options.SingleReplayPath is not null)
+    {
+        var singleOutputPath = options.SingleOutputPath is not null
+            ? options.SingleOutputPath
+            : Path.Combine(
+                Path.GetDirectoryName(options.SingleReplayPath) ?? Environment.CurrentDirectory,
+                $"{Path.GetFileNameWithoutExtension(options.SingleReplayPath)}.trajectory.json");
+
+        var singleResult = ProcessReplayFile(options.SingleReplayPath, singleOutputPath, jsonOptions);
         PrintSingleResult(singleResult);
         return;
     }
 
-    if (!Directory.Exists(defaultReplayDirectory))
+    if (!Directory.Exists(options.ReplayDirectory))
     {
-        Console.WriteLine($"Replay directory not found: {defaultReplayDirectory}");
+        Console.WriteLine($"Replay directory not found: {options.ReplayDirectory}");
         return;
     }
 
-    Directory.CreateDirectory(defaultOutputRootDirectory);
+    Directory.CreateDirectory(options.OutputRootDirectory);
 
     var replayFiles = Directory
-        .GetFiles(defaultReplayDirectory, "*.Replay.Gbx", SearchOption.AllDirectories)
+        .GetFiles(
+            options.ReplayDirectory,
+            "*.Replay.Gbx",
+            options.Recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly)
         .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
         .ToArray();
 
     if (replayFiles.Length == 0)
     {
-        Console.WriteLine($"No replay files found in: {defaultReplayDirectory}");
+        Console.WriteLine($"No replay files found in: {options.ReplayDirectory}");
         return;
     }
 
@@ -73,14 +83,15 @@ try
             ? $"map_{mapCounter}"
             : exportPreview.MapKey;
 
-        if (!mapDirectoriesByKey.TryGetValue(mapKey, out var mapDirectoryName))
+        var mapDirectoryName = options.MapName;
+        if (string.IsNullOrWhiteSpace(mapDirectoryName) && !mapDirectoriesByKey.TryGetValue(mapKey, out mapDirectoryName))
         {
             mapDirectoryName = CreateMapDirectoryName(exportPreview.MapName, mapCounter);
             mapDirectoriesByKey[mapKey] = mapDirectoryName;
             mapCounter++;
         }
 
-        var mapDirectoryPath = Path.Combine(defaultOutputRootDirectory, mapDirectoryName);
+        var mapDirectoryPath = Path.Combine(options.OutputRootDirectory, mapDirectoryName);
         var outputPath = Path.Combine(
             mapDirectoryPath,
             $"{Path.GetFileNameWithoutExtension(replayFile)}.trajectory.json");
@@ -95,12 +106,25 @@ try
         });
     }
 
-    PrintBatchSummary(defaultReplayDirectory, defaultOutputRootDirectory, results);
+    PrintBatchSummary(options.ReplayDirectory, options.OutputRootDirectory, results);
 }
 catch (Exception ex)
 {
     Console.WriteLine("Trajectory export failed.");
     Console.WriteLine(ex.Message);
+}
+
+static void PrintUsage()
+{
+    Console.WriteLine("Usage:");
+    Console.WriteLine("  dotnet run --project src/extractor-csharp/RacingLine.csproj -- [options]");
+    Console.WriteLine("  dotnet run --project src/extractor-csharp/RacingLine.csproj -- <replay-file> [output-json]");
+    Console.WriteLine();
+    Console.WriteLine("Options:");
+    Console.WriteLine("  --replay-dir <path>   Directory containing .Replay.Gbx files.");
+    Console.WriteLine("  --output-root <path>  Root directory for trajectory JSON output.");
+    Console.WriteLine("  --map <name>          Force all batch output into this map folder.");
+    Console.WriteLine("  --recursive           Include replay files from nested directories.");
 }
 
 static ExportResult ProcessReplayFile(string inputPath, string outputPath, JsonSerializerOptions jsonOptions)
@@ -153,21 +177,15 @@ static ExportResult ExtractReplayData(string inputPath)
             return ExportResult.Fail(inputPath, "RecordData is missing or has an unexpected type.");
         }
 
-        if (recordData.EntList is null || recordData.EntList.Count == 0 || recordData.EntList[0] is null)
+        if (recordData.EntList is null || recordData.EntList.Count == 0)
         {
-            return ExportResult.Fail(inputPath, "EntList is missing or does not contain EntList[0].");
+            return ExportResult.Fail(inputPath, "EntList is missing or empty.");
         }
 
-        var samples = recordData.EntList[0]!.Samples;
-        if (samples is null || samples.Count == 0)
-        {
-            return ExportResult.Fail(inputPath, "EntList[0].Samples is missing or empty.");
-        }
-
-        var points = ExtractTrajectoryPoints(samples);
+        var points = ExtractBestTrajectoryPoints(recordData.EntList);
         if (points.Count == 0)
         {
-            return ExportResult.Fail(inputPath, "No valid trajectory points were extracted from EntList[0].Samples.");
+            return ExportResult.Fail(inputPath, "No valid trajectory points were extracted from any EntList samples.");
         }
 
         var mapName = TryResolveMapName(node) ?? Path.GetFileNameWithoutExtension(inputPath);
@@ -186,6 +204,29 @@ static ExportResult ExtractReplayData(string inputPath)
     {
         return ExportResult.Fail(inputPath, ex.Message);
     }
+}
+
+static List<TrajectoryPoint> ExtractBestTrajectoryPoints(
+    IReadOnlyList<CPlugEntRecordData.EntRecordListElem> entList)
+{
+    var bestPoints = new List<TrajectoryPoint>();
+
+    foreach (var entRecord in entList)
+    {
+        var samples = entRecord?.Samples;
+        if (samples is null || samples.Count == 0)
+        {
+            continue;
+        }
+
+        var points = ExtractTrajectoryPoints(samples);
+        if (points.Count > bestPoints.Count)
+        {
+            bestPoints = points;
+        }
+    }
+
+    return bestPoints;
 }
 
 static List<TrajectoryPoint> ExtractTrajectoryPoints(IReadOnlyList<CPlugEntRecordData.EntRecordDelta> samples)
@@ -401,5 +442,85 @@ public sealed record ExportResult(
             Points: Array.Empty<TrajectoryPoint>(),
             MapName: null,
             MapKey: null);
+    }
+}
+
+public sealed record ExtractorOptions(
+    string ReplayDirectory,
+    string OutputRootDirectory,
+    string? MapName,
+    string? SingleReplayPath,
+    string? SingleOutputPath,
+    bool Recursive,
+    bool HelpRequested)
+{
+    public static ExtractorOptions Parse(
+        string[] args,
+        string defaultReplayDirectory,
+        string defaultOutputRootDirectory)
+    {
+        if (args.Length > 0 && File.Exists(args[0]))
+        {
+            return new ExtractorOptions(
+                ReplayDirectory: defaultReplayDirectory,
+                OutputRootDirectory: defaultOutputRootDirectory,
+                MapName: null,
+                SingleReplayPath: Path.GetFullPath(args[0]),
+                SingleOutputPath: args.Length > 1 ? Path.GetFullPath(args[1]) : null,
+                Recursive: false,
+                HelpRequested: false);
+        }
+
+        var replayDirectory = defaultReplayDirectory;
+        var outputRootDirectory = defaultOutputRootDirectory;
+        string? mapName = null;
+        var recursive = false;
+        var helpRequested = false;
+
+        for (var i = 0; i < args.Length; i++)
+        {
+            var arg = args[i];
+            switch (arg)
+            {
+                case "--help":
+                case "-h":
+                    helpRequested = true;
+                    break;
+                case "--replay-dir":
+                    replayDirectory = RequireValue(args, ref i, arg);
+                    break;
+                case "--output-root":
+                    outputRootDirectory = RequireValue(args, ref i, arg);
+                    break;
+                case "--map":
+                    mapName = RequireValue(args, ref i, arg);
+                    break;
+                case "--recursive":
+                    recursive = true;
+                    break;
+                default:
+                    throw new ArgumentException($"Unknown argument: {arg}");
+            }
+        }
+
+        return new ExtractorOptions(
+            ReplayDirectory: Path.GetFullPath(replayDirectory),
+            OutputRootDirectory: Path.GetFullPath(outputRootDirectory),
+            MapName: mapName,
+            SingleReplayPath: null,
+            SingleOutputPath: null,
+            Recursive: recursive,
+            HelpRequested: helpRequested);
+    }
+
+    private static string RequireValue(string[] args, ref int index, string optionName)
+    {
+        if (index + 1 >= args.Length)
+        {
+            throw new ArgumentException($"Missing value for {optionName}");
+        }
+
+        index++;
+        return args[index];
     }
 }

@@ -74,14 +74,19 @@ Unlike older revisions, `center_line` and `mine_line` now include real `y` coord
 ## Run
 
 ```powershell
-python .\src\analyzer-python\trajectory.py --source-dir ".\data\raw\trajectories\Spring 2026 - 03"
-python .\src\analyzer-python\bundle_builder.py --analysis-json ".\data\processed\Spring 2026 - 03\analysis_data.json"
+python .\src\analyzer-python\trajectory.py --map "Spring 2026 - 02" --mine "TRAIANUSssS" --expected-map-prefix "Spring 2026 - 02" --require-mine
+python .\src\analyzer-python\bundle_builder.py --map "Spring 2026 - 02" --range "1000-1010"
 ```
 
-The analyzer defaults to `TRAIANUSssS` for both highlighted mine trajectory detection and center-line exclusion. The exclusion can be overridden with:
+The analyzer defaults to `TRAIANUSssS` for both highlighted mine trajectory detection and center-line exclusion. In normal pipeline runs, `--mine` is passed explicitly and the pipeline also passes:
+
+- `--expected-map-prefix`, so stale trajectory JSON from another map fails fast
+- `--require-mine`, so an incomplete center-only bundle is not installed by accident
+
+The exclusion can be overridden with:
 
 ```powershell
-python .\src\analyzer-python\trajectory.py --source-dir ".\data\raw\trajectories\Spring 2026 - 03" --exclude-center-nickname "SomeNickname"
+python .\src\analyzer-python\trajectory.py --map "Spring 2026 - 02" --mine "TRAIANUSssS" --exclude-center-nickname "SomeNickname"
 ```
 
 ## Important implementation notes
@@ -93,3 +98,4 @@ python .\src\analyzer-python\trajectory.py --source-dir ".\data\raw\trajectories
 - spread is still based on `x/z`, not full 3D distance
 - `analysis_points` in the bundle are the preferred canonical metric layer
 - duplicate analysis fields inside `mine_line` are currently kept for compatibility
+- `bundle_builder.py --range "1000-1010"` writes `top_1000_1010.analysis_bundle.json` by default
