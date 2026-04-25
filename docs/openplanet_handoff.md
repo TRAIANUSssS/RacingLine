@@ -25,7 +25,11 @@ It should not:
 - `main.as`, `Config.as`, `Models.as`, `Loader.as`, `Ui.as`, and `Renderer.as` are implemented
 - bundle parsing is implemented
 - UI window is implemented
+- bundle path editing and reload are implemented
+- `Show Center`, `Show Mine`, and `Show Problem Zones` toggles are implemented
 - `center_line` world rendering is implemented
+- `mine_line` world rendering is implemented
+- `problem_zones` world marker rendering is implemented
 - `info.toml` now depends on the official Openplanet `Camera` dependency
 
 ## Expected input
@@ -54,6 +58,7 @@ The current viewer can:
 
 - auto-load on startup
 - reload on demand from the UI
+- edit the bundle path from the UI
 - show whether loading succeeded
 - show the last error message
 - show:
@@ -63,13 +68,12 @@ The current viewer can:
   - mine point count
   - problem zone count
   - projected/skipped center segment counts
+  - projected/skipped mine segment counts
+  - projected/skipped problem zone counts
 - project world positions through the official `Camera` dependency
 - draw the `center_line` as a connected overlay line when `Show Center` is enabled
-
-It currently does not:
-
-- draw `mine_line`
-- draw problem zone markers
+- draw the `mine_line` as a connected overlay line when `Show Mine` is enabled
+- draw problem zone markers when `Show Problem Zones` is enabled
 
 ## Storage path
 
@@ -87,13 +91,13 @@ That allows the UI field to stay as:
 analysis_bundle.json
 ```
 
-## Suggested MVP rendering order
+## Suggested next rendering work
 
-1. Keep current loader, UI, and `center_line` rendering stable
-2. Render mine line
-3. Render problem zone markers
-4. Add simple world-space toggles and styling
+1. Keep current loader, UI, toggles, and layer rendering stable
+2. Improve styling for problem zone markers if needed
+3. Add richer zone labels or details only after the marker layer is stable
+4. Avoid redesigning the bundle schema unless the analyzer needs new viewer fields
 
 ## Current constraint
 
-The data contract is ready, the loader/UI plugin is working, and `center_line` projection is now solved through the official `Camera` dependency. The next Openplanet steps should extend rendering from the existing bundle, not redesign the schema or return to manual camera math.
+The data contract is ready, the loader/UI plugin is working, and world projection is solved through the official `Camera` dependency. The next Openplanet steps should refine rendering from the existing bundle, not redesign the schema or return to manual camera math.

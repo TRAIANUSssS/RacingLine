@@ -1,6 +1,6 @@
 # Pipeline
 
-RacingLine currently works as an offline-first pipeline with a future in-game viewer.
+RacingLine currently works as an offline-first pipeline with an Openplanet in-game viewer.
 
 ## End-to-end flow
 
@@ -13,7 +13,7 @@ RacingLine currently works as an offline-first pipeline with a future in-game vi
 7. Build `analysis_bundle.json`
 8. Copy or generate that bundle into Openplanet plugin storage
 9. Load that bundle from the Openplanet UI
-10. Render `center_line` in-game through the Openplanet viewer
+10. Render `center_line`, `mine_line`, and `problem_zones` in-game through the Openplanet viewer
 
 ## Layers
 
@@ -64,21 +64,19 @@ This layer stabilizes the contract for Openplanet. The bundle now includes:
 
 - Code: `src/openplanet`
 - Plugin folder: `src/openplanet/RacingLine`
-- Current state: loader + UI implemented, `center_line` world rendering implemented
+- Current state: loader + UI implemented, `center_line`, `mine_line`, and `problem_zones` world rendering implemented
 
 The viewer currently:
 
 - resolves bundle paths relative to Openplanet plugin storage
 - loads and parses `analysis_bundle.json`
 - exposes a reload button
-- shows load status, bundle error text, map name, mine run name, point counts, and basic render counters
+- shows load status, bundle error text, map name, mine run name, point counts, toggles, and render counters
 - projects world points through the official Openplanet `Camera` dependency
 - renders the `center_line` as a connected in-game overlay line
-
-The viewer does not yet:
-
-- render `mine_line`
-- render `problem_zones`
+- renders the `mine_line` as a connected in-game overlay line
+- renders `problem_zones` as in-game markers
+- lets `Show Center`, `Show Mine`, and `Show Problem Zones` independently control those layers
 
 Expected storage location for a relative bundle path:
 

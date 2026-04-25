@@ -18,7 +18,7 @@ void RenderWindow() {
 
 void RenderDataSection() {
     UI::Text("Data");
-    UI::InputText("Bundle path", g_BundlePath);
+    g_BundlePath = UI::InputText("Bundle path", g_BundlePath);
     if (UI::Button("Reload")) {
         ReloadBundle();
     }
@@ -55,14 +55,18 @@ void RenderInfoSection() {
     UI::Text("Center points: " + g_Bundle.centerLine.Length);
     UI::Text("Mine points: " + g_Bundle.mineLine.Length);
     UI::Text("Problem zones: " + g_Bundle.problemZones.Length);
-    UI::Text("Projected center segments: " + g_LastProjectedSegments);
-    UI::Text("Skipped center segments: " + g_LastSkippedSegments);
+    UI::Text("Projected center segments: " + g_LastProjectedCenterSegments);
+    UI::Text("Skipped center segments: " + g_LastSkippedCenterSegments);
+    UI::Text("Projected mine segments: " + g_LastProjectedMineSegments);
+    UI::Text("Skipped mine segments: " + g_LastSkippedMineSegments);
+    UI::Text("Projected problem zones: " + g_LastProjectedProblemZones);
+    UI::Text("Skipped problem zones: " + g_LastSkippedProblemZones);
     UI::Text("Viewport cameras: " + g_LastCameraCount);
 }
 
 void RenderToggleSection() {
     UI::Text("Toggles");
-    UI::Checkbox("Show Center", g_ShowCenter);
-    UI::Checkbox("Show Mine", g_ShowMine);
-    UI::Checkbox("Show Problem Zones", g_ShowProblemZones);
+    g_ShowCenter = UI::Checkbox("Show Center", g_ShowCenter);
+    g_ShowMine = UI::Checkbox("Show Mine", g_ShowMine);
+    g_ShowProblemZones = UI::Checkbox("Show Problem Zones", g_ShowProblemZones);
 }
