@@ -30,6 +30,7 @@ It should not:
 - the default bundle filename is `top_1000_1010.analysis_bundle.json`
 - current map detection is implemented from `GetApp().RootMap.MapName`
 - `Show Center`, `Show Mine`, and `Show Problem Zones` toggles are implemented
+- runtime sliders for line widths, marker size, and visible problem zone count are implemented
 - `center_line` world rendering is implemented
 - `mine_line` world rendering is implemented
 - `problem_zones` world marker rendering is implemented
@@ -82,6 +83,14 @@ The current viewer can:
 - recolor the center line by speed delta when `Color Center By Speed Delta` is enabled
 - draw the `mine_line` as a connected overlay line when `Show Mine` is enabled
 - draw problem zone markers when `Show Problem Zones` is enabled
+- adjust center line width, mine line width, problem marker size, and visible problem zone count from the UI
+
+Current UI block order:
+
+1. `Status`
+2. `Data`
+3. `Toggles`
+4. `Info`
 
 ## Storage path
 
@@ -107,6 +116,16 @@ The old flat storage path `PluginStorage/RacingLine/analysis_bundle.json` is no 
 2. Improve styling for problem zone markers if needed
 3. Add richer zone labels or details only after the marker layer is stable
 4. Avoid redesigning the bundle schema unless the analyzer needs new viewer fields
+
+## Planned pipeline automation
+
+Future Openplanet work is expected to add:
+
+- leaderboard rank-range selection in the UI
+- replay downloading from the UI
+- automatic replay extraction, analysis, bundle building, and bundle installation
+- automatic map and player identity propagation into scripts
+- robust handling for multiple maps and player nicknames
 
 ## Current constraint
 

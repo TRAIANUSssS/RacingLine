@@ -85,6 +85,7 @@ Notes:
 - `x/y/z` are world coordinates
 - `speed` is median speed on the common progress grid
 - `spread` is currently derived from horizontal `x/z` variation
+- excluded player runs do not contribute to center line or spread values
 
 ## `mine_line`
 

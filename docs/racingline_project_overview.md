@@ -115,6 +115,8 @@ Current status:
 - the UI shows load status, error text, map info, mine run name, counts, toggles, and render debug counters
 - the UI shows the current Openplanet user name/login for future automatic player matching
 - the UI shows available bundle files for the current map folder as a combo box
+- the UI block order is `Status`, `Data`, `Toggles`, `Info`
+- the UI exposes runtime render controls for center line width, mine line width, problem zone marker size, and visible problem zone count
 - `center_line` world rendering is implemented
 - `mine_line` world rendering is implemented
 - `problem_zones` world marker rendering is implemented
@@ -263,19 +265,32 @@ tests/
 
 ## Current MVP direction
 
-The current preferred MVP is:
+The current implemented MVP is:
 
 1. extract replay data offline
 2. analyze runs offline
 3. build one stable `analysis_bundle.json`
-4. load that bundle in Openplanet
-5. confirm bundle loading and metadata in UI
-6. render center line in game
-7. render mine line in game
-8. render problem zone markers in game
-9. use UI toggles to inspect each overlay layer independently
+4. install that bundle into `PluginStorage/RacingLine/bundles/<map>/`
+5. load that bundle in Openplanet based on the current map
+6. confirm bundle loading and metadata in UI
+7. render center line in game
+8. render mine line in game
+9. render problem zone markers in game
+10. use UI toggles and render sliders to inspect each overlay layer independently
 
 This avoids rewriting working extractor and analytics logic too early.
+
+## Planned next direction
+
+The next larger project direction is to move more of the pipeline orchestration into the Openplanet UI:
+
+1. choose leaderboard rank ranges for analysis from the UI
+2. download replay files from the UI
+3. run extraction, analysis, bundle building, and bundle installation automatically
+4. pass the detected map and player identity into scripts instead of relying on hardcoded defaults
+5. support multiple maps and player nicknames without manual path or nickname edits
+
+For now, replay parsing and analytics remain offline scripts.
 
 ## Useful mental model
 

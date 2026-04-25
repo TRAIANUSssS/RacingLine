@@ -77,12 +77,15 @@ The viewer currently:
 - loads and parses `analysis_bundle.json`
 - exposes a reload button
 - shows load status, bundle error text, map name, mine run name, point counts, toggles, and render counters
+- shows current Openplanet user name/login
+- exposes render sliders for center line width, mine line width, problem marker size, and visible problem zone count
 - projects world points through the official Openplanet `Camera` dependency
 - renders the `center_line` as a connected in-game overlay line
 - can recolor the center line by `speed_delta` from red (mine slower) to green (mine faster)
 - renders the `mine_line` as a connected in-game overlay line
 - renders `problem_zones` as in-game markers
 - lets `Show Center`, `Show Mine`, and `Show Problem Zones` independently control those layers
+- keeps `Status`, `Data`, `Toggles`, and `Info` as the UI block order
 
 Expected storage location for a relative bundle path:
 
@@ -97,11 +100,21 @@ Expected storage location for a relative bundle path:
 .\scripts\install_bundle.ps1 -BundlePath ".\data\processed\Spring 2026 - 03\analysis_bundle.json"
 ```
 
-Then place the resulting bundle in Openplanet storage:
+The install step copies the resulting bundle to Openplanet storage:
 
 ```text
 C:\Users\<user>\OpenplanetNext\PluginStorage\RacingLine\bundles\Spring 2026 - 03\top_1000_1010.analysis_bundle.json
 ```
+
+## Planned automation
+
+The intended next pipeline evolution is:
+
+- select leaderboard rank ranges from the Openplanet UI
+- download replay files from the Openplanet UI
+- run extraction, analysis, bundle building, and installation automatically
+- pass detected map and player identity into scripts instead of relying on manual constants
+- support multiple maps and player nicknames without manual path edits
 
 ## Default paths
 

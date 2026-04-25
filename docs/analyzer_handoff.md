@@ -69,6 +69,8 @@ This file contains:
 
 Unlike older revisions, `center_line` and `mine_line` now include real `y` coordinates after resampling.
 
+`runs` includes `used_for_center`, which is false for trajectories excluded from center/spread computation.
+
 ## Run
 
 ```powershell
@@ -76,12 +78,18 @@ python .\src\analyzer-python\trajectory.py --source-dir ".\data\raw\trajectories
 python .\src\analyzer-python\bundle_builder.py --analysis-json ".\data\processed\Spring 2026 - 03\analysis_data.json"
 ```
 
+The analyzer defaults to `TRAIANUSssS` for both highlighted mine trajectory detection and center-line exclusion. The exclusion can be overridden with:
+
+```powershell
+python .\src\analyzer-python\trajectory.py --source-dir ".\data\raw\trajectories\Spring 2026 - 03" --exclude-center-nickname "SomeNickname"
+```
+
 ## Important implementation notes
 
 - progress is computed from horizontal path length in `x/z`
 - `x`, `y`, `z`, and `speed` are all interpolated on the common progress grid
 - centerline `x/y/z` uses median aggregation
+- trajectories matching the excluded center nickname are omitted from centerline and spread aggregation
 - spread is still based on `x/z`, not full 3D distance
 - `analysis_points` in the bundle are the preferred canonical metric layer
 - duplicate analysis fields inside `mine_line` are currently kept for compatibility
-
