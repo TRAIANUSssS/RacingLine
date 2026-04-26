@@ -45,6 +45,21 @@ bool LoadBundle(const string &in path) {
     }
     bundle.mineRunName = JsonGetString(root, "mine_run_name");
 
+    Json::Value@ runsArray = root.Get("runs");
+    if (runsArray !is null && runsArray.GetType() == Json::Type::Array) {
+        for (uint i = 0; i < runsArray.Length; i++) {
+            Json::Value@ item = runsArray[i];
+            if (item is null || item.GetType() != Json::Type::Object) {
+                continue;
+            }
+
+            RunInfo@ run = ParseRunInfo(item);
+            if (run !is null) {
+                bundle.runs.InsertLast(run);
+            }
+        }
+    }
+
     Json::Value@ centerArray = root.Get("center_line");
     if (centerArray !is null && centerArray.GetType() == Json::Type::Array) {
         for (uint i = 0; i < centerArray.Length; i++) {
@@ -155,6 +170,51 @@ MinePoint@ ParseMinePoint(Json::Value@ json) {
     return point;
 }
 
+RunInfo@ ParseRunInfo(Json::Value@ json) {
+    if (json is null || json.GetType() != Json::Type::Object) {
+        return null;
+    }
+
+    RunInfo@ run = RunInfo();
+    run.name = JsonGetString(json, "name");
+    run.pointCount = JsonGetInt(json, "point_count");
+    run.hasSpeed = JsonGetBool(json, "has_speed");
+    run.usedForCenter = JsonGetBool(json, "used_for_center");
+
+    Json::Value@ lineArray = json.Get("line");
+    if (lineArray !is null && lineArray.GetType() == Json::Type::Array) {
+        for (uint i = 0; i < lineArray.Length; i++) {
+            Json::Value@ item = lineArray[i];
+            if (item is null || item.GetType() != Json::Type::Object) {
+                continue;
+            }
+
+            RunLinePoint@ point = ParseRunLinePoint(item);
+            if (point !is null) {
+                run.line.InsertLast(point);
+            }
+        }
+    }
+
+    return run;
+}
+
+RunLinePoint@ ParseRunLinePoint(Json::Value@ json) {
+    if (json is null || json.GetType() != Json::Type::Object) {
+        return null;
+    }
+
+    RunLinePoint@ point = RunLinePoint();
+    point.progress = JsonGetFloat(json, "progress");
+    point.pos = vec3(
+        JsonGetFloat(json, "x"),
+        JsonGetFloat(json, "y"),
+        JsonGetFloat(json, "z")
+    );
+    point.speed = JsonGetFloat(json, "speed");
+    return point;
+}
+
 AnalysisPoint@ ParseAnalysisPoint(Json::Value@ json) {
     if (json is null || json.GetType() != Json::Type::Object) {
         return null;
@@ -238,5 +298,22 @@ int JsonGetInt(Json::Value@ obj, const string &in key) {
         return int(value);
     } catch {
         return 0;
+    }
+}
+
+bool JsonGetBool(Json::Value@ obj, const string &in key) {
+    if (obj is null || obj.GetType() != Json::Type::Object) {
+        return false;
+    }
+
+    Json::Value@ value = obj.Get(key);
+    if (value is null || value.GetType() == Json::Type::Null) {
+        return false;
+    }
+
+    try {
+        return bool(value);
+    } catch {
+        return false;
     }
 }

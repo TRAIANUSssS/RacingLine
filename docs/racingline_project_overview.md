@@ -623,16 +623,22 @@ Open question:
 
 ### Stage 13 - Other player trajectory rendering
 
+Status: implemented.
+
 Goal:
 
 - add an optional viewer layer for trajectories from the analyzed replay/ghost set
 
-Initial MVP v2 behavior:
+Current implementation:
 
-- add a `Show Other Runs` checkbox
-- render all non-mine runs from the bundle as lightweight lines
+- the analyzer exports resampled line points for every analyzed run into `analysis_data.json`
+- the bundle builder copies normalized run line data into `runs[].line`
+- the Openplanet loader parses `runs[].line`
+- the viewer has a `Show Other Runs` checkbox
+- the viewer renders all non-mine runs from the bundle as lightweight lines
 - keep the layer visually quieter than center/mine lines
 - respect the same render distance filtering as other overlay layers
+- old bundles without `runs[].line` still load, but the other-runs layer has nothing to draw until the bundle is rebuilt
 
 Reasoning:
 

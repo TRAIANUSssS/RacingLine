@@ -2,6 +2,8 @@ uint g_LastProjectedCenterSegments = 0;
 uint g_LastSkippedCenterSegments = 0;
 uint g_LastProjectedMineSegments = 0;
 uint g_LastSkippedMineSegments = 0;
+uint g_LastProjectedOtherRunSegments = 0;
+uint g_LastSkippedOtherRunSegments = 0;
 uint g_LastProjectedProblemZones = 0;
 uint g_LastSkippedProblemZones = 0;
 uint g_LastCameraCount = 0;
@@ -263,6 +265,72 @@ void DrawMineLine() {
     }
 }
 
+void DrawOtherRuns() {
+    g_LastProjectedOtherRunSegments = 0;
+    g_LastSkippedOtherRunSegments = 0;
+
+    if (g_Bundle is null || g_Bundle.runs.Length == 0) {
+        return;
+    }
+
+    nvg::StrokeWidth(g_OtherRunLineWidth);
+    nvg::StrokeColor(OtherRunLineColor);
+
+    for (uint runIndex = 0; runIndex < g_Bundle.runs.Length; runIndex++) {
+        RunInfo@ run = g_Bundle.runs[runIndex];
+        if (run is null || run.line.Length < 2 || IsMineRun(run)) {
+            continue;
+        }
+
+        nvg::BeginPath();
+        bool hasOpenSubPath = false;
+        uint runProjectedSegments = 0;
+
+        for (uint i = 1; i < run.line.Length; i++) {
+            RunLinePoint@ prev = run.line[i - 1];
+            RunLinePoint@ curr = run.line[i];
+            if (prev is null || curr is null) {
+                hasOpenSubPath = false;
+                continue;
+            }
+
+            if (!IsSegmentInsideRenderDistance(prev.pos, curr.pos)) {
+                g_LastSkippedOtherRunSegments++;
+                hasOpenSubPath = false;
+                continue;
+            }
+
+            vec2 a;
+            vec2 b;
+            if (!ProjectWorldPoint(prev.pos, a) || !ProjectWorldPoint(curr.pos, b)) {
+                g_LastSkippedOtherRunSegments++;
+                hasOpenSubPath = false;
+                continue;
+            }
+
+            g_LastProjectedOtherRunSegments++;
+            runProjectedSegments++;
+            if (!hasOpenSubPath) {
+                nvg::MoveTo(a);
+                hasOpenSubPath = true;
+            }
+            nvg::LineTo(b);
+        }
+
+        if (runProjectedSegments > 0) {
+            nvg::Stroke();
+        }
+    }
+}
+
+bool IsMineRun(RunInfo@ run) {
+    if (run is null || g_Bundle is null || g_Bundle.mineRunName.Length == 0) {
+        return false;
+    }
+
+    return run.name == g_Bundle.mineRunName;
+}
+
 void DrawProblemZones() {
     g_LastProjectedProblemZones = 0;
     g_LastSkippedProblemZones = 0;
@@ -306,6 +374,8 @@ void RenderWorldOverlay() {
     g_LastSkippedCenterSegments = 0;
     g_LastProjectedMineSegments = 0;
     g_LastSkippedMineSegments = 0;
+    g_LastProjectedOtherRunSegments = 0;
+    g_LastSkippedOtherRunSegments = 0;
     g_LastProjectedProblemZones = 0;
     g_LastSkippedProblemZones = 0;
     g_LastRenderReferenceAvailable = g_ShowFullTrajectory ? false : TryGetCurrentCarPosition(g_LastRenderReferencePos);
@@ -324,6 +394,10 @@ void RenderWorldOverlay() {
 
     if (g_ShowMine) {
         DrawMineLine();
+    }
+
+    if (g_ShowOtherRuns) {
+        DrawOtherRuns();
     }
 
     if (g_ShowProblemZones) {

@@ -16,6 +16,7 @@ def build_bundle_from_analysis(analysis_json_path: Path, output_path: Path) -> d
     center_line = _normalize_center_line(analysis.get("center_line", []))
     mine_run_name = analysis.get("mine_name")
     mine_line = _normalize_mine_line(analysis.get("mine_line", []))
+    runs = _normalize_runs(analysis.get("runs", []))
     analysis_points = _build_analysis_points(mine_line)
     problem_zones = _normalize_problem_zones(analysis.get("problem_zones", []), center_line)
 
@@ -38,7 +39,7 @@ def build_bundle_from_analysis(analysis_json_path: Path, output_path: Path) -> d
             "source_dir": analysis.get("source_dir"),
             "sample_count": analysis.get("sample_count"),
         },
-        "runs": analysis.get("runs", []),
+        "runs": runs,
         "center_line": center_line,
         "mine_run_name": mine_run_name,
         "mine_line": mine_line,
@@ -51,6 +52,42 @@ def build_bundle_from_analysis(analysis_json_path: Path, output_path: Path) -> d
     }
     write_json(output_path, bundle)
     return bundle
+
+
+def _normalize_runs(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for row in runs:
+        if not isinstance(row, dict):
+            continue
+
+        normalized = {
+            "name": row.get("name"),
+            "point_count": _to_int(row.get("point_count")),
+            "has_speed": bool(row.get("has_speed")),
+            "used_for_center": bool(row.get("used_for_center")),
+        }
+        line = row.get("line")
+        if isinstance(line, list):
+            normalized["line"] = _normalize_run_line(line)
+        rows.append(normalized)
+    return rows
+
+
+def _normalize_run_line(line: list[dict[str, Any]]) -> list[dict[str, float | None]]:
+    rows: list[dict[str, float | None]] = []
+    for row in line:
+        if not isinstance(row, dict):
+            continue
+        rows.append(
+            {
+                "progress": _to_float(row.get("progress")),
+                "x": _to_float(row.get("x")),
+                "y": _to_float(row.get("y")),
+                "z": _to_float(row.get("z")),
+                "speed": _to_float(row.get("speed")),
+            }
+        )
+    return rows
 
 
 def _normalize_center_line(center_line: list[dict[str, Any]]) -> list[dict[str, float | None]]:

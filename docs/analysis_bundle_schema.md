@@ -58,11 +58,26 @@ Each item describes one raw trajectory used in the batch:
   "name": "run name",
   "point_count": 455,
   "has_speed": true,
-  "used_for_center": true
+  "used_for_center": true,
+  "line": []
 }
 ```
 
 `used_for_center` is false for runs excluded from center line and spread computation, for example the current player's own run.
+
+When present, `line` contains the run resampled onto the same normalized progress grid as `center_line`:
+
+```json
+{
+  "progress": 0.0,
+  "x": 1072.0,
+  "y": 2.002,
+  "z": 656.00006,
+  "speed": 0.8105306
+}
+```
+
+Openplanet uses `runs[].line` for the optional `Show Other Runs` layer. Older bundles may omit this field; they remain loadable, but the other-runs layer has no geometry to draw.
 
 ## `center_line`
 

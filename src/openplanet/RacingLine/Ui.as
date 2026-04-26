@@ -120,6 +120,7 @@ void RenderInfoSection() {
         UI::Text("Bundle range: " + GetSelectedBundleLabel());
         UI::Text("Bundle file: " + g_SelectedBundleFileName);
         UI::Text("Mine run: -");
+        UI::Text("Runs: 0");
         UI::Text("Center points: 0");
         UI::Text("Mine points: 0");
         UI::Text("Problem zones: 0");
@@ -131,6 +132,7 @@ void RenderInfoSection() {
     UI::Text("Bundle range: " + GetSelectedBundleLabel());
     UI::Text("Bundle file: " + g_SelectedBundleFileName);
     UI::Text("Mine run: " + (g_Bundle.mineRunName.Length > 0 ? g_Bundle.mineRunName : "-"));
+    UI::Text("Runs: " + g_Bundle.runs.Length);
     UI::Text("Center points: " + g_Bundle.centerLine.Length);
     UI::Text("Mine points: " + g_Bundle.mineLine.Length);
     UI::Text("Problem zones: " + g_Bundle.problemZones.Length);
@@ -138,6 +140,8 @@ void RenderInfoSection() {
     UI::Text("Skipped center segments: " + g_LastSkippedCenterSegments);
     UI::Text("Projected mine segments: " + g_LastProjectedMineSegments);
     UI::Text("Skipped mine segments: " + g_LastSkippedMineSegments);
+    UI::Text("Projected other run segments: " + g_LastProjectedOtherRunSegments);
+    UI::Text("Skipped other run segments: " + g_LastSkippedOtherRunSegments);
     UI::Text("Projected problem zones: " + g_LastProjectedProblemZones);
     UI::Text("Skipped problem zones: " + g_LastSkippedProblemZones);
     UI::Text("Viewport cameras: " + g_LastCameraCount);
@@ -148,6 +152,7 @@ void RenderToggleSection() {
     g_ShowCenter = UI::Checkbox("Show Center", g_ShowCenter);
     g_ColorCenterBySpeedDelta = UI::Checkbox("Color Center By Speed Delta", g_ColorCenterBySpeedDelta);
     g_ShowMine = UI::Checkbox("Show Mine", g_ShowMine);
+    g_ShowOtherRuns = UI::Checkbox("Show Other Runs", g_ShowOtherRuns);
     g_ShowProblemZones = UI::Checkbox("Show Problem Zones", g_ShowProblemZones);
 
     UI::Text("Render Settings");
@@ -157,6 +162,7 @@ void RenderToggleSection() {
     }
     g_CenterLineWidth = UI::SliderFloat("Center width", g_CenterLineWidth, 1.0f, 10.0f);
     g_MineLineWidth = UI::SliderFloat("Mine width", g_MineLineWidth, 1.0f, 10.0f);
+    g_OtherRunLineWidth = UI::SliderFloat("Other runs width", g_OtherRunLineWidth, 0.5f, 5.0f);
     g_ProblemZoneMarkerSize = UI::SliderFloat("Problem marker size", g_ProblemZoneMarkerSize, 2.0f, 32.0f);
     g_MaxVisibleProblemZones = UI::SliderInt("Problem zones", g_MaxVisibleProblemZones, 0, 20);
 }

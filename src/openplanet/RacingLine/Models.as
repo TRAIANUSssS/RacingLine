@@ -11,6 +11,20 @@ class MinePoint {
     float speed = 0.0f;
 }
 
+class RunLinePoint {
+    float progress = 0.0f;
+    vec3 pos = vec3();
+    float speed = 0.0f;
+}
+
+class RunInfo {
+    string name = "";
+    int pointCount = 0;
+    bool hasSpeed = false;
+    bool usedForCenter = false;
+    array<RunLinePoint@> line;
+}
+
 class AnalysisPoint {
     float progress = 0.0f;
     float deviation = 0.0f;
@@ -33,9 +47,9 @@ class ProblemZone {
 class AnalysisBundle {
     string mapName = "";
     string mineRunName = "";
+    array<RunInfo@> runs;
     array<CenterPoint@> centerLine;
     array<MinePoint@> mineLine;
     array<AnalysisPoint@> analysisPoints;
     array<ProblemZone@> problemZones;
 }
-

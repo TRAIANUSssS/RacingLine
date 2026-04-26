@@ -121,21 +121,42 @@ def export_analysis_data(output_path: Path, result: AnalysisResult) -> None:
         "map_name": result.map_name,
         "source_dir": format_repo_path(result.source_dir),
         "sample_count": int(result.common_progress.size),
-        "runs": [
-            {
-                "name": item.name,
-                "point_count": int(item.x.size),
-                "has_speed": item.speed is not None,
-                "used_for_center": any(center_item.name == item.name for center_item in result.center_source_trajectories),
-            }
-            for item in result.raw_trajectories
-        ],
+        "runs": _build_run_rows(result),
         "center_line": center_line,
         "mine_name": result.mine_raw.name if result.mine_raw is not None else None,
         "mine_line": mine_line,
         "problem_zones": result.problem_zones,
     }
     write_json(output_path, payload)
+
+
+def _build_run_rows(result: AnalysisResult) -> list[dict[str, Any]]:
+    raw_by_name = {item.name: item for item in result.raw_trajectories}
+    center_names = {item.name for item in result.center_source_trajectories}
+    rows: list[dict[str, Any]] = []
+
+    for item in result.resampled_trajectories:
+        raw_item = raw_by_name.get(item.name)
+        rows.append(
+            {
+                "name": item.name,
+                "point_count": int(raw_item.x.size if raw_item is not None else item.x.size),
+                "has_speed": item.speed is not None,
+                "used_for_center": item.name in center_names,
+                "line": [
+                    {
+                        "progress": float(progress),
+                        "x": float(item.x[i]),
+                        "y": float(item.y[i]),
+                        "z": float(item.z[i]),
+                        "speed": _array_value(item.speed, i),
+                    }
+                    for i, progress in enumerate(result.common_progress)
+                ],
+            }
+        )
+
+    return rows
 
 
 def write_json(output_path: Path, payload: Any) -> None:

@@ -120,6 +120,7 @@ def main() -> None:
         "mine": args.mine,
         "samples": args.samples,
         "allow_missing_mine": args.allow_missing_mine,
+        "bundle_contract_version": 2,
     }
 
     if args.download_ghosts:
