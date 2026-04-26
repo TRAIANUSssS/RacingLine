@@ -292,6 +292,10 @@ string GetSelectedBundleLabel() {
         return g_AvailableBundleLabels[uint(g_SelectedBundleIndex)];
     }
 
+    if (!IsBundleFileAvailable(g_SelectedBundleFileName)) {
+        return "not found";
+    }
+
     int start = 0;
     int end = 0;
     if (TryParseBundleRange(g_SelectedBundleFileName, start, end)) {
