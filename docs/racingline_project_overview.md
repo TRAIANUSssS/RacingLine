@@ -680,22 +680,33 @@ Notes:
 
 ### Stage 15 - UI cleanup and dev mode toggle
 
+Status: implemented.
+
 Problem:
 
 - the current Openplanet UI exposes too much technical information for normal use
 - paths, debug counters, technical status, and always-correct metadata make the player-facing UI noisy
 
-Goal:
+Current implementation:
 
-- add a developer/debug mode toggle
-- keep the default UI focused on information and controls useful while driving or inspecting a line
+- the Openplanet window has two modes: compact user UI and dev UI
+- compact user UI is the default
+- dev UI keeps the previous technical blocks: `Status`, `Data`, `Pipeline`, `Toggles`, and `Info`
+- both modes include a `Dev mode` checkbox, so the user can enter or leave dev UI
+- compact user UI shows current map, bundle selector, reload/refresh buttons, rank range controls, command generation buttons, sample controls, render toggles, performance warning text, and optional advanced render settings
 
-Planned direction:
+Compact UI layout:
 
-- add a `dev_mode` or `Developer Mode` checkbox
-- hide technical paths, detailed counters, raw status fields, and pipeline internals when developer mode is disabled
-- keep those details available when debugging bundle loading, rendering, or pipeline handoff
-- decide exact UI grouping when this stage starts, based on the then-current UI
+- `Current map`
+- bundle combo box
+- `Reload` and `Refresh bundles` buttons on one line
+- compact `Rank from` / `to` fields
+- `Generate` and `Force generate` buttons
+- `Auto samples` and either density text or manual sample slider
+- six render checkboxes in two columns
+- warning that other runs and full trajectory can hurt performance
+- `Extra options` checkbox for render sliders
+- `Dev mode` checkbox with a warning text
 
 ### Stage 16 - Live progress lookahead rendering
 

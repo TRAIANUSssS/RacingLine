@@ -5,17 +5,133 @@ void RenderWindow() {
 
     UI::SetNextWindowSize(420, 320, UI::Cond::FirstUseEver);
     if (UI::Begin("RacingLine", g_ShowWindow)) {
-        RenderStatusSection();
-        UI::Separator();
-        RenderDataSection();
-        UI::Separator();
-        RenderPipelineSection();
-        UI::Separator();
-        RenderToggleSection();
-        UI::Separator();
-        RenderInfoSection();
+        if (g_DevMode) {
+            RenderDevWindowContent();
+        } else {
+            RenderUserWindowContent();
+        }
     }
     UI::End();
+}
+
+void RenderDevWindowContent() {
+    RenderStatusSection();
+    UI::Separator();
+    RenderDataSection();
+    UI::Separator();
+    RenderPipelineSection();
+    UI::Separator();
+    RenderToggleSection();
+    UI::Separator();
+    RenderInfoSection();
+    UI::Separator();
+    g_DevMode = UI::Checkbox("Dev mode", g_DevMode);
+}
+
+void RenderUserWindowContent() {
+    AutoRefreshBundleFiles();
+    UpdatePipelineCommand();
+
+    UI::Text("Current map: " + (g_CurrentMapName.Length > 0 ? g_CurrentMapName : "-"));
+
+    if (g_AvailableBundleFiles.Length == 0) {
+        UI::Text("Bundle: " + GetSelectedBundleLabel());
+    } else {
+        UI::SetNextItemWidth(220.0f);
+        if (UI::BeginCombo("Bundle", GetSelectedBundleLabel())) {
+            for (uint i = 0; i < g_AvailableBundleFiles.Length; i++) {
+                bool isSelected = int(i) == g_SelectedBundleIndex;
+                if (UI::Selectable(g_AvailableBundleLabels[i] + "##user-bundle-" + g_AvailableBundleFiles[i], isSelected)) {
+                    g_SelectedBundleFileName = g_AvailableBundleFiles[i];
+                    g_SelectedBundleIndex = int(i);
+                    ReloadBundle();
+                }
+            }
+            UI::EndCombo();
+        }
+    }
+
+    if (UI::Button("Reload")) {
+        ReloadBundle();
+    }
+    UI::SameLine();
+    if (UI::Button("Refresh bundles")) {
+        RefreshBundleFiles();
+    }
+
+    UI::Separator();
+    UI::Text("Generate new bundle");
+    RenderUserRankControls();
+
+    if (UI::Button("Generate")) {
+        UpdatePipelineCommand();
+        IO::SetClipboard(g_PipelineCommand);
+        RefreshBundleFiles();
+        g_PipelineCopyStatus = "Command copied.";
+    }
+    UI::SameLine();
+    if (UI::Button("Force generate")) {
+        UpdatePipelineCommandWithForce();
+        IO::SetClipboard(g_PipelineCommand);
+        RefreshBundleFiles();
+        g_PipelineCopyStatus = "Force command copied.";
+    }
+    if (g_PipelineCopyStatus.Length > 0) {
+        UI::Text(g_PipelineCopyStatus);
+    }
+
+    g_PipelineAutoSamples = UI::Checkbox("Auto samples", g_PipelineAutoSamples);
+    if (g_PipelineAutoSamples) {
+        UI::Text("Sample density: 10 points/sec");
+    } else {
+        g_PipelineManualSamples = UI::SliderInt("Sample points", g_PipelineManualSamples, 50, 3000);
+        NormalizePipelineRange();
+    }
+
+    UI::Separator();
+    RenderUserToggleGrid();
+
+    UI::TextWrapped("Showing other runs or the full trajectory can heavily affect performance.");
+
+    g_ShowAdvancedOptions = UI::Checkbox("Extra options", g_ShowAdvancedOptions);
+    if (g_ShowAdvancedOptions) {
+        RenderRenderSettingsSliders();
+    }
+
+    g_DevMode = UI::Checkbox("Dev mode (You don't need to click here ;)", g_DevMode);
+}
+
+void RenderUserRankControls() {
+    UI::AlignTextToFramePadding();
+    UI::Text("Rank from");
+    UI::SameLine();
+    UI::SetNextItemWidth(110.0f);
+    g_PipelineRangeFrom = UI::InputInt("##user-rank-from", g_PipelineRangeFrom);
+    UI::SameLine();
+    UI::AlignTextToFramePadding();
+    UI::Text("to");
+    UI::SameLine();
+    UI::SetNextItemWidth(110.0f);
+    g_PipelineRangeTo = UI::InputInt("##user-rank-to", g_PipelineRangeTo);
+    NormalizePipelineRange();
+}
+
+void RenderUserToggleGrid() {
+    if (UI::BeginTable("toggle-grid", 2)) {
+        UI::TableNextColumn();
+        g_ShowCenter = UI::Checkbox("Show Center", g_ShowCenter);
+        UI::TableNextColumn();
+        g_ShowMine = UI::Checkbox("Show Mine", g_ShowMine);
+        UI::TableNextColumn();
+        g_ShowOtherRuns = UI::Checkbox("Show Other Runs", g_ShowOtherRuns);
+        UI::TableNextColumn();
+        g_ShowProblemZones = UI::Checkbox("Show Problem Zones", g_ShowProblemZones);
+        UI::TableNextColumn();
+        g_ColorCenterBySpeedDelta = UI::Checkbox("Color Center By Speed Delta", g_ColorCenterBySpeedDelta);
+        UI::TableNextColumn();
+        g_ShowFullTrajectory = UI::Checkbox("Show Full Trajectory", g_ShowFullTrajectory);
+        UI::EndTable();
+    }
 }
 
 void RenderDataSection() {
@@ -165,6 +281,10 @@ void RenderToggleSection() {
 
     UI::Text("Render Settings");
     g_ShowFullTrajectory = UI::Checkbox("Show Full Trajectory", g_ShowFullTrajectory);
+    RenderRenderSettingsSliders();
+}
+
+void RenderRenderSettingsSliders() {
     if (!g_ShowFullTrajectory) {
         g_RenderDistance = UI::SliderFloat("Render Distance", g_RenderDistance, 50.0f, 2000.0f);
     }

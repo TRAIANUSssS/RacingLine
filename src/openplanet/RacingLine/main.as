@@ -3,6 +3,8 @@ bool g_BundleLoaded = false;
 string g_LastError = "";
 
 bool g_ShowWindow = true;
+bool g_DevMode = false;
+bool g_ShowAdvancedOptions = false;
 bool g_ShowCenter = true;
 bool g_ShowMine = true;
 bool g_ShowOtherRuns = false;
@@ -343,6 +345,14 @@ string SanitizePathSegment(const string &in value) {
 }
 
 void UpdatePipelineCommand() {
+    g_PipelineCommand = BuildPipelineCommand(false);
+}
+
+void UpdatePipelineCommandWithForce() {
+    g_PipelineCommand = BuildPipelineCommand(true);
+}
+
+string BuildPipelineCommand(bool force) {
     string mapName = g_CurrentMapName.Length > 0 ? g_CurrentMapName : "<current_map>";
     string mineNickname = StripTrackmaniaFormatCodes(g_CurrentUserName).Trim();
     if (mineNickname.Length == 0) {
@@ -358,6 +368,9 @@ void UpdatePipelineCommand() {
     command += " --map " + QuotePowerShell(mapName);
     command += " --mine " + QuotePowerShell(mineNickname);
     command += " --range " + QuotePowerShell(BuildPipelineRange());
+    if (force) {
+        command += " --force";
+    }
     if (g_PipelineReplayInputDir.Trim().Length > 0) {
         command += " --replay-input-dir " + QuotePowerShell(g_PipelineReplayInputDir.Trim());
     }
@@ -373,10 +386,10 @@ void UpdatePipelineCommand() {
     }
 
     if (g_PipelineProjectRoot.Trim().Length > 0) {
-        g_PipelineCommand = "Set-Location " + QuotePowerShell(g_PipelineProjectRoot.Trim()) + "; " + command;
-    } else {
-        g_PipelineCommand = command;
+        return "Set-Location " + QuotePowerShell(g_PipelineProjectRoot.Trim()) + "; " + command;
     }
+
+    return command;
 }
 
 void NormalizePipelineRange() {

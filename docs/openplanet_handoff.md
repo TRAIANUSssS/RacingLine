@@ -68,6 +68,8 @@ The current viewer can:
 - auto-load on startup
 - reload on demand from the UI
 - detect the current map name
+- show a compact user UI by default
+- switch to the full technical dev UI through `Dev mode`
 - show the current Openplanet user name/login
 - generate and copy a PowerShell command for `pipeline.py`
 - choose automatic or manual analysis sample count in the generated command
@@ -95,6 +97,20 @@ The current viewer can:
 - limit rendered overlay layers by distance from the current car unless `Show Full Trajectory` is enabled
 
 Current UI block order:
+
+Compact user UI:
+
+1. `Current map`
+2. bundle selector
+3. reload and bundle refresh controls
+4. rank range controls
+5. generate / force-generate controls
+6. sample mode controls
+7. render toggles
+8. optional advanced render settings
+9. `Dev mode`
+
+Dev UI:
 
 1. `Status`
 2. `Data`
@@ -149,12 +165,11 @@ The old flat storage path `PluginStorage/RacingLine/analysis_bundle.json` is no 
 
 ## Suggested next rendering work
 
-1. Add a developer/debug mode toggle and move technical UI details behind it
-2. Add live progress lookahead rendering as a later extension if distance filtering is not enough
-3. Add optional per-player run selection if all-runs rendering is too noisy
-4. Improve styling for problem zone markers if needed
-5. Add richer zone labels or details only after the marker layer is stable
-6. Avoid redesigning the bundle schema unless the analyzer needs new viewer fields
+1. Add live progress lookahead rendering as a later extension if distance filtering is not enough
+2. Add optional per-player run selection if all-runs rendering is too noisy
+3. Improve styling for problem zone markers if needed
+4. Add richer zone labels or details only after the marker layer is stable
+5. Avoid redesigning the bundle schema unless the analyzer needs new viewer fields
 
 Render distance filtering is the current solution for reducing far-away visual clutter. A future time-window mode, such as rendering only the next 5 seconds of the route, would require reliable live-run progress matching and should be treated as a later extension.
 
