@@ -729,27 +729,135 @@ Reason to defer:
 - it may need live car sample tracking and nearest-progress matching
 - this can be useful later, but distance filtering is simpler and likely good enough for the next viewer iteration
 
-## MVP v3 Plan (User Mode / Plugin-First Distribution)
+## MVP v3 Plan (Local User Automation)
 
-MVP v3 is a separate project step. It should not block MVP v2 viewer and pipeline improvements.
+MVP v3 is a separate project step focused on local automation, not on remote bundle distribution.
 
 Primary goal:
 
-- prepare a user-facing mode that does not require the local developer pipeline
+- let a player open a map, choose a leaderboard rank range, generate a local bundle, and view it in Openplanet with minimal manual work
+- keep generated bundles local for each player
+- avoid introducing a separate server or hosted bundle repository
 
-Expected user mode:
+Current direction:
 
-- OpenPlanet viewer plugin
-- consumes prebuilt `.analysis_bundle.json` files
-- does not require local C#, Python, or GBX extraction setup
+- do not rewrite the whole C# / Python pipeline into AngelScript at once
+- move toward plugin-driven automation in stages
+- keep the current extractor, analyzer, bundle builder, and cache behavior as the working reference implementation
+- treat full plugin-side bundle generation as a later migration target, not the first MVP v3 step
 
-Major decision point:
+### Stage 1 - Stabilize bundle and data contract
 
-- whether to move parts of extraction, orchestration, or analysis into AngelScript
-- or keep heavy processing external and distribute prebuilt bundles separately
+Required cleanup:
 
-Current recommendation:
+- use `map_uid` as the stable map key for new generated paths and metadata
+- keep `map_name` as display metadata and for backward compatibility where needed
+- ensure bundle metadata includes:
+  - `schema_version`
+  - `map_uid`
+  - `map_name`
+  - `rank_from`
+  - `rank_to`
+  - `sample_mode`
+  - `sample_count`
+  - `created_at`
+  - `generator`
 
-- do not rewrite the pipeline into AngelScript yet
-- first finish MVP v2 workflow and viewer UX improvements
-- revisit AngelScript migration only after the external process and data contract are stable enough to know what should actually move into the plugin
+Reasoning:
+
+- map names can be duplicated, renamed, localized, or contain path-hostile characters
+- `map_uid` gives the plugin and pipeline a shared durable identifier
+- the same bundle contract should work whether the bundle is created by the current external pipeline or by a future plugin-side implementation
+
+### Stage 2 - Clean local producer workflow
+
+Goal:
+
+- make the current pipeline a clean local bundle generator, not a debug/report generator by default
+
+Expected normal output:
+
+- downloaded `.Ghost.Gbx` files
+- extracted trajectory JSON files
+- processed analysis data if still needed as an intermediate artifact
+- final `.analysis_bundle.json`
+
+Graph behavior:
+
+- plot generation should not be part of the normal user flow
+- plots are useful for developer inspection when running the process manually
+- keep plots behind an explicit dev/debug option
+
+### Stage 3 - Normalize local folders
+
+New generated inputs should move toward `map_uid`-based paths:
+
+```text
+data/raw/ghosts/<map_uid>/top_<from>_<to>/
+```
+
+Installed bundles should move toward:
+
+```text
+PluginStorage/RacingLine/bundles/<map_uid>/top_<from>_<to>.analysis_bundle.json
+```
+
+Compatibility note:
+
+- existing `map_name`-based folders can remain supported during migration
+- new code should prefer `map_uid` when it is available
+
+### Stage 4 - Download all ghosts into one folder, then use the old processor
+
+First useful MVP v3 milestone:
+
+- Openplanet detects current map data and selected rank range
+- ghosts for the selected range are downloaded into one predictable local folder
+- the existing extractor/analyzer/bundle builder processes that folder
+- the generated bundle is installed into plugin storage and loaded by the viewer
+
+This stage should preserve the current working data processing path and change only the input preparation and orchestration around it.
+
+Open question:
+
+- Openplanet currently does not execute external processes
+- if that remains true, this stage may still generate/copy a command after preparing the ghost folder
+- if a safe local helper or external process trigger is introduced, the UI can become a true one-button local generation flow
+
+### Stage 5 - Download and unpack on the plugin side
+
+Next migration stage:
+
+- Openplanet downloads ghosts itself
+- replay/ghost unpacking moves closer to the plugin
+- the Python analyzer and bundle builder can remain external at first
+
+Main risk:
+
+- GBX parsing is already solved in C# through GBX.NET
+- reimplementing GBX parsing in AngelScript may be expensive and fragile
+- a small local helper may be more practical than a full AngelScript parser
+
+### Stage 6 - Download, unpack, and create bundle on the plugin side
+
+Longer-term target:
+
+- Openplanet downloads ghosts
+- Openplanet or a tightly integrated helper extracts trajectory data
+- bundle generation happens without the current Python/C# developer pipeline
+- the old pipeline remains as the developer/reference implementation
+
+This stage is large because it requires moving or replacing:
+
+- trajectory extraction
+- resampling
+- center line computation
+- spread/deviation/importance computation
+- problem zone detection
+- sample count logic
+- pipeline cache behavior
+
+Recommendation:
+
+- do not start MVP v3 here
+- only attempt this after the local folder layout, metadata contract, no-plot normal flow, and old-pipeline orchestration are stable
