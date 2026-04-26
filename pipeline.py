@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 import hashlib
 import json
 import shutil
@@ -84,7 +85,19 @@ def main() -> None:
         default=Path.home() / "OpenplanetNext" / "PluginStorage" / "RacingLine",
         help="Openplanet RacingLine plugin storage root.",
     )
-    parser.add_argument("--samples", type=int, default=300, help="Analysis sample count.")
+    parser.add_argument(
+        "--sample-mode",
+        choices=("manual", "auto"),
+        default="manual",
+        help="Use a fixed sample count or derive it from trajectory duration.",
+    )
+    parser.add_argument("--samples", type=int, default=300, help="Manual analysis sample count.")
+    parser.add_argument(
+        "--auto-samples-per-second",
+        type=float,
+        default=10.0,
+        help="Auto sample density. Used only with --sample-mode auto.",
+    )
     parser.add_argument("--skip-extract", action="store_true", help="Skip replay extraction.")
     parser.add_argument("--skip-plots", action="store_true", help="Skip plot outputs during analysis.")
     parser.add_argument("--skip-install", action="store_true", help="Build bundle but do not copy it to Openplanet storage.")
@@ -114,14 +127,8 @@ def main() -> None:
     cache_manifest_path = _cache_manifest_path(args.map_name, args.rank_range)
     cache_enabled = not args.disable_cache and not args.skip_extract
     cache_skipped_build = False
-    cache_settings = {
-        "map_name": args.map_name,
-        "rank_range": args.rank_range,
-        "mine": args.mine,
-        "samples": args.samples,
-        "allow_missing_mine": args.allow_missing_mine,
-        "bundle_contract_version": 2,
-    }
+    analysis_samples: int | None = resolve_analysis_sample_count(args, trajectory_source_dir, required=False)
+    cache_settings = build_cache_settings(args, analysis_samples)
 
     if args.download_ghosts:
         if not args.leaderboard_id:
@@ -225,6 +232,9 @@ def main() -> None:
             extract_cmd.append("--recursive")
         _run(extract_cmd)
 
+    analysis_samples = resolve_analysis_sample_count(args, trajectory_source_dir, required=True)
+    cache_settings = build_cache_settings(args, analysis_samples)
+
     if not args.skip_plots and not args.keep_old_plots:
         clean_plot_dir(plot_output_dir)
 
@@ -238,7 +248,7 @@ def main() -> None:
         "--expected-map-prefix",
         args.map_name,
         "--samples",
-        str(args.samples),
+        str(analysis_samples),
     ]
     if args.skip_plots:
         analyze_cmd.append("--skip-plots")
@@ -284,6 +294,85 @@ def install_bundle(bundle_path: Path, storage_root: Path, map_name: str, bundle_
     target_path = target_dir / bundle_name
     shutil.copy2(bundle_path, target_path)
     return target_path
+
+
+def build_cache_settings(args: argparse.Namespace, analysis_samples: int | None) -> dict[str, Any]:
+    return {
+        "map_name": args.map_name,
+        "rank_range": args.rank_range,
+        "mine": args.mine,
+        "sample_mode": args.sample_mode,
+        "manual_samples": args.samples,
+        "auto_samples_per_second": args.auto_samples_per_second,
+        "resolved_samples": analysis_samples,
+        "allow_missing_mine": args.allow_missing_mine,
+        "bundle_contract_version": 3,
+    }
+
+
+def resolve_analysis_sample_count(args: argparse.Namespace, trajectory_source_dir: Path, required: bool) -> int | None:
+    if args.sample_mode == "manual":
+        return max(2, int(args.samples))
+
+    try:
+        duration_seconds = estimate_trajectory_duration_seconds(trajectory_source_dir)
+    except FileNotFoundError:
+        if required:
+            raise
+        return None
+
+    samples = int(math.ceil(duration_seconds * args.auto_samples_per_second))
+    samples = max(2, samples)
+    if required:
+        print(
+            f"Auto samples: duration={duration_seconds:.2f}s density={args.auto_samples_per_second:g}/s samples={samples}",
+            flush=True,
+        )
+    return samples
+
+
+def estimate_trajectory_duration_seconds(trajectory_source_dir: Path) -> float:
+    if not trajectory_source_dir.exists() or not trajectory_source_dir.is_dir():
+        raise FileNotFoundError(f"Trajectory source directory not found: {trajectory_source_dir}")
+
+    durations: list[float] = []
+    for path in sorted(trajectory_source_dir.glob("*.json")):
+        if not path.is_file():
+            continue
+
+        duration_ms = read_trajectory_duration_ms(path)
+        if duration_ms is not None and duration_ms > 0:
+            durations.append(duration_ms)
+
+    if not durations:
+        raise FileNotFoundError(f"No trajectory JSON files with valid time values found in: {trajectory_source_dir}")
+
+    durations.sort()
+    median_duration_ms = durations[len(durations) // 2]
+    return median_duration_ms / 1000.0
+
+
+def read_trajectory_duration_ms(path: Path) -> float | None:
+    try:
+        points = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+    if not isinstance(points, list):
+        return None
+
+    times: list[float] = []
+    for point in points:
+        if not isinstance(point, dict) or point.get("t") is None:
+            continue
+        try:
+            times.append(float(point["t"]))
+        except (TypeError, ValueError):
+            continue
+
+    if not times:
+        return None
+    return max(times) - min(times)
 
 
 def build_input_manifest_entries(input_dir: Path, recursive: bool, map_name: str, trajectory_source_dir: Path) -> list[dict[str, Any]]:

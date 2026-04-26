@@ -653,28 +653,30 @@ Possible later extension:
 
 ### Stage 14 - Analysis sample count control
 
+Status: implemented.
+
 Problem:
 
 - analysis currently uses a fixed sample count such as `300`
 - short maps and long maps get the same number of key analysis points
 - a 15-second map and a 3-minute map need different point density
 
-Possible approaches:
+Current implementation:
 
-- expose sample count in the Openplanet pipeline UI and generated command
-- add a `--samples` field to the user-facing workflow if it is not already visible there
-- optionally compute a recommended sample count from replay duration
+- `pipeline.py` supports `--sample-mode manual` and `--sample-mode auto`
+- manual mode uses `--samples <count>`
+- auto mode estimates representative map duration from extracted trajectory JSON `t` values
+- auto mode uses `10` samples per second by default, so a 47-second map gets about `470` samples
+- auto mode uses median trajectory duration across available runs to avoid one unusual replay dominating the value
+- the Openplanet pipeline UI exposes an `Auto samples` checkbox
+- when auto mode is disabled, the UI shows a manual `Sample points` slider
+- generated pipeline commands include the selected sample mode
 
-Preferred MVP v2 approach:
+Notes:
 
-- first expose manual sample count control so the user can tune density per map
-- later add an automatic recommendation based on representative replay duration
-
-Automatic recommendation idea:
-
-- estimate map duration from analyzed replay/ghost times
-- choose a target density per time interval, for example several hundred samples per 20 seconds
-- clamp to reasonable minimum and maximum values to avoid huge bundles or overly sparse overlays
+- CLI default remains manual `300` samples for backward compatibility
+- Openplanet UI defaults to auto samples for normal generated commands
+- pipeline cache includes the sample mode and resolved sample count, so changing density rebuilds analysis and bundle output
 
 ### Stage 15 - UI cleanup and dev mode toggle
 

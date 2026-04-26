@@ -204,6 +204,14 @@ The current pipeline cache behavior is:
 - `--force` bypasses the pipeline cache, forces ghost redownload when ghost downloading is enabled, and rebuilds all outputs
 - `--disable-cache` restores the legacy full extraction/rebuild behavior without using the input hash cache
 
+The current sample-count behavior is:
+
+- manual mode uses `--sample-mode manual --samples <count>`
+- auto mode uses `--sample-mode auto`
+- auto mode estimates median trajectory duration from extracted JSON `t` values
+- auto mode uses `10` samples per second by default, so a 47-second map gets about `470` analysis samples
+- the Openplanet generated command exposes both modes through an `Auto samples` checkbox and a manual `Sample points` slider
+
 Current stability status:
 
 - the end-to-end MVP flow has been verified from replay/ghost input through bundle installation and in-game visualization

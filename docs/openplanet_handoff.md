@@ -70,6 +70,7 @@ The current viewer can:
 - detect the current map name
 - show the current Openplanet user name/login
 - generate and copy a PowerShell command for `pipeline.py`
+- choose automatic or manual analysis sample count in the generated command
 - download the current player's personal-best replay for the current map into plugin storage
 - look for bundles in the detected map folder
 - select available `.analysis_bundle.json` files from a combo box
@@ -105,6 +106,7 @@ The `Pipeline` block includes:
 
 - editable project root
 - editable leaderboard rank range start/end
+- auto/manual sample count controls
 - editable replay input directory
 - a mine replay download button
 - a `Use mine replay` toggle that appends `--include-mine-replay --mine-replay-path ...` to the generated command
@@ -147,13 +149,12 @@ The old flat storage path `PluginStorage/RacingLine/analysis_bundle.json` is no 
 
 ## Suggested next rendering work
 
-1. Expose analysis sample count in the pipeline UI / generated command
-2. Add a developer/debug mode toggle and move technical UI details behind it
-3. Add live progress lookahead rendering as a later extension if distance filtering is not enough
-4. Add optional per-player run selection if all-runs rendering is too noisy
-5. Improve styling for problem zone markers if needed
-6. Add richer zone labels or details only after the marker layer is stable
-7. Avoid redesigning the bundle schema unless the analyzer needs new viewer fields
+1. Add a developer/debug mode toggle and move technical UI details behind it
+2. Add live progress lookahead rendering as a later extension if distance filtering is not enough
+3. Add optional per-player run selection if all-runs rendering is too noisy
+4. Improve styling for problem zone markers if needed
+5. Add richer zone labels or details only after the marker layer is stable
+6. Avoid redesigning the bundle schema unless the analyzer needs new viewer fields
 
 Render distance filtering is the current solution for reducing far-away visual clutter. A future time-window mode, such as rendering only the next 5 seconds of the route, would require reliable live-run progress matching and should be treated as a later extension.
 

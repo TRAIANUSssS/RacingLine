@@ -59,15 +59,23 @@ void RenderPipelineSection() {
     int previousRangeTo = g_PipelineRangeTo;
     string previousReplayDir = g_PipelineReplayInputDir;
     bool previousIncludeMineReplay = g_PipelineIncludeMineReplay;
+    bool previousAutoSamples = g_PipelineAutoSamples;
+    int previousManualSamples = g_PipelineManualSamples;
 
     g_PipelineProjectRoot = UI::InputText("Project root", g_PipelineProjectRoot);
     g_PipelineRangeFrom = UI::InputInt("Rank from", g_PipelineRangeFrom);
     g_PipelineRangeTo = UI::InputInt("Rank to", g_PipelineRangeTo);
+    g_PipelineAutoSamples = UI::Checkbox("Auto samples", g_PipelineAutoSamples);
+    if (g_PipelineAutoSamples) {
+        UI::Text("Sample density: 10 points/sec");
+    } else {
+        g_PipelineManualSamples = UI::SliderInt("Sample points", g_PipelineManualSamples, 50, 3000);
+    }
     g_PipelineReplayInputDir = UI::InputText("Replay dir", g_PipelineReplayInputDir);
     g_PipelineIncludeMineReplay = UI::Checkbox("Use mine replay", g_PipelineIncludeMineReplay);
     NormalizePipelineRange();
 
-    if (previousRoot != g_PipelineProjectRoot || previousRangeFrom != g_PipelineRangeFrom || previousRangeTo != g_PipelineRangeTo || previousReplayDir != g_PipelineReplayInputDir || previousIncludeMineReplay != g_PipelineIncludeMineReplay) {
+    if (previousRoot != g_PipelineProjectRoot || previousRangeFrom != g_PipelineRangeFrom || previousRangeTo != g_PipelineRangeTo || previousReplayDir != g_PipelineReplayInputDir || previousIncludeMineReplay != g_PipelineIncludeMineReplay || previousAutoSamples != g_PipelineAutoSamples || previousManualSamples != g_PipelineManualSamples) {
         UpdatePipelineCommand();
         g_PipelineCopyStatus = "";
     }

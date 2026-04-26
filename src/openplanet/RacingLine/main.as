@@ -31,6 +31,8 @@ uint64 g_LastBundleRefreshTime = 0;
 string g_PipelineProjectRoot = PipelineProjectRoot;
 int g_PipelineRangeFrom = PipelineDefaultRangeFrom;
 int g_PipelineRangeTo = PipelineDefaultRangeTo;
+bool g_PipelineAutoSamples = PipelineAutoSamples;
+int g_PipelineManualSamples = PipelineManualSamples;
 string g_PipelineReplayInputDir = "";
 bool g_PipelineIncludeMineReplay = true;
 string g_PipelineCommand = "";
@@ -363,6 +365,12 @@ void UpdatePipelineCommand() {
         command += " --include-mine-replay";
         command += " --mine-replay-path " + QuotePowerShell(g_MineReplayPath);
     }
+    if (g_PipelineAutoSamples) {
+        command += " --sample-mode auto";
+    } else {
+        command += " --sample-mode manual";
+        command += " --samples " + g_PipelineManualSamples;
+    }
 
     if (g_PipelineProjectRoot.Trim().Length > 0) {
         g_PipelineCommand = "Set-Location " + QuotePowerShell(g_PipelineProjectRoot.Trim()) + "; " + command;
@@ -383,6 +391,12 @@ void NormalizePipelineRange() {
     }
     if (g_PipelineRangeTo - g_PipelineRangeFrom > 20) {
         g_PipelineRangeTo = g_PipelineRangeFrom + 20;
+    }
+    if (g_PipelineManualSamples < 50) {
+        g_PipelineManualSamples = 50;
+    }
+    if (g_PipelineManualSamples > 3000) {
+        g_PipelineManualSamples = 3000;
     }
 }
 
