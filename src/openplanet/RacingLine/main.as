@@ -396,8 +396,14 @@ void NormalizePipelineRange() {
     if (g_PipelineRangeFrom < 1) {
         g_PipelineRangeFrom = 1;
     }
+    if (g_PipelineRangeFrom > PipelineMaxRank) {
+        g_PipelineRangeFrom = PipelineMaxRank;
+    }
     if (g_PipelineRangeTo < 1) {
         g_PipelineRangeTo = 1;
+    }
+    if (g_PipelineRangeTo > PipelineMaxRank) {
+        g_PipelineRangeTo = PipelineMaxRank;
     }
     if (g_PipelineRangeTo < g_PipelineRangeFrom) {
         g_PipelineRangeTo = g_PipelineRangeFrom;

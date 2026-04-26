@@ -4,6 +4,7 @@ string DefaultBundleFileName = "top_1000_1010.analysis_bundle.json";
 string PipelineProjectRoot = "E:/Projects/RacingLine";
 int PipelineDefaultRangeFrom = 1000;
 int PipelineDefaultRangeTo = 1010;
+int PipelineMaxRank = 10000;
 bool PipelineAutoSamples = true;
 int PipelineManualSamples = 300;
 

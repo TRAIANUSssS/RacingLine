@@ -113,6 +113,9 @@ void RenderUserRankControls() {
     UI::SameLine();
     UI::SetNextItemWidth(110.0f);
     g_PipelineRangeTo = UI::InputInt("##user-rank-to", g_PipelineRangeTo);
+    UI::SameLine();
+    UI::AlignTextToFramePadding();
+    UI::Text("Max " + PipelineMaxRank);
     NormalizePipelineRange();
 }
 

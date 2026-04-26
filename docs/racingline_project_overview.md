@@ -423,7 +423,7 @@ Current implementation:
 - the plugin exposes `Rank from` and `Rank to` fields
 - rank values cannot be below `1`
 - the current maximum rank span is `20`
-- no upper leaderboard limit is enforced yet; this should later come from leaderboard metadata
+- rank values cannot be above `10000`, matching the current Trackmania.io downloader limit
 - the plugin generates a PowerShell command for `pipeline.py`
 - the plugin can copy the generated command to the clipboard
 - the plugin does not execute external processes

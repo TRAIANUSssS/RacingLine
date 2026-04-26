@@ -143,7 +143,7 @@ Pipeline range rules:
 
 - `Rank from` and `Rank to` cannot be lower than `1`
 - `Rank to` is clamped to `Rank from + 20`
-- no upper leaderboard limit is enforced yet; this should later be read from leaderboard metadata
+- `Rank from` and `Rank to` cannot be higher than `10000`, matching the current Trackmania.io downloader limit
 
 ## Storage path
 
