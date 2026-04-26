@@ -107,6 +107,8 @@ The `Pipeline` block includes:
 - generated terminal command
 - copy button for the generated command
 
+The `Data` block lists installed bundles for the current map as compact rank ranges such as `100-110` and `1000-1020`, sorted by numeric range start/end. The underlying files remain named `top_<range>.analysis_bundle.json`. The list refreshes automatically while the UI is open and can still be refreshed manually.
+
 Mine replay storage:
 
 ```text

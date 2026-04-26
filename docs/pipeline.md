@@ -193,10 +193,19 @@ The Openplanet command handoff stage is implemented:
 - rank range fields are clamped to rank values of at least `1` and a maximum span of `20`
 - no upper leaderboard limit is enforced yet; this should later come from leaderboard metadata
 
+The current pipeline cache behavior is:
+
+- downloaded ghosts are reused unless `--force-download-ghosts` or `--force` is passed
+- stale `.Ghost.Gbx` files in a downloaded range folder are removed when they are no longer present in the latest Trackmania.io manifest
+- `pipeline.py` stores a SHA-256 input manifest and analysis settings under `data/temp/pipeline_cache/<map>/top_<range>.json`
+- when replay/ghost inputs are unchanged and the derived bundle exists, extraction, analysis, and bundle building are skipped
+- when only some inputs changed, only changed/new inputs are extracted, then analysis and bundle building rerun
+- when inputs were removed, stale cached trajectory JSON files from the previous manifest are removed before analysis
+- `--force` bypasses the pipeline cache, forces ghost redownload when ghost downloading is enabled, and rebuilds all outputs
+- `--disable-cache` restores the legacy full extraction/rebuild behavior without using the input hash cache
+
 The next pipeline evolution is:
 
-- download ghost files for a leaderboard range
-- add caching for already downloaded replays and already extracted trajectories
 - verify the pipeline across multiple maps and leaderboard ranges
 
 ## Default paths

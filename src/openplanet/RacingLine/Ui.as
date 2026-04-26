@@ -19,6 +19,8 @@ void RenderWindow() {
 }
 
 void RenderDataSection() {
+    AutoRefreshBundleFiles();
+
     UI::Text("Data");
     UI::Text("Current map: " + (g_CurrentMapName.Length > 0 ? g_CurrentMapName : "-"));
     UI::Text("Current user: " + (g_CurrentUserName.Length > 0 ? g_CurrentUserName : "-"));
@@ -26,11 +28,11 @@ void RenderDataSection() {
     UI::Text("Bundle folder: " + (g_CurrentMapFolderName.Length > 0 ? BundleRootDirectory + "/" + g_CurrentMapFolderName : "-"));
 
     if (g_AvailableBundleFiles.Length == 0) {
-        UI::Text("Bundle: " + g_SelectedBundleFileName);
-    } else if (UI::BeginCombo("Bundle", g_SelectedBundleFileName)) {
+        UI::Text("Bundle: " + GetSelectedBundleLabel());
+    } else if (UI::BeginCombo("Bundle", GetSelectedBundleLabel())) {
         for (uint i = 0; i < g_AvailableBundleFiles.Length; i++) {
             bool isSelected = int(i) == g_SelectedBundleIndex;
-            if (UI::Selectable(g_AvailableBundleFiles[i], isSelected)) {
+            if (UI::Selectable(g_AvailableBundleLabels[i] + "##" + g_AvailableBundleFiles[i], isSelected)) {
                 g_SelectedBundleFileName = g_AvailableBundleFiles[i];
                 g_SelectedBundleIndex = int(i);
                 ReloadBundle();
@@ -80,6 +82,7 @@ void RenderPipelineSection() {
 
     if (UI::Button("Generate command")) {
         UpdatePipelineCommand();
+        RefreshBundleFiles();
         g_PipelineCopyStatus = "";
     }
 
@@ -114,6 +117,8 @@ void RenderInfoSection() {
     UI::Text("Info");
     if (g_Bundle is null) {
         UI::Text("Map: -");
+        UI::Text("Bundle range: " + GetSelectedBundleLabel());
+        UI::Text("Bundle file: " + g_SelectedBundleFileName);
         UI::Text("Mine run: -");
         UI::Text("Center points: 0");
         UI::Text("Mine points: 0");
@@ -123,6 +128,8 @@ void RenderInfoSection() {
 
     UI::Text("Map: " + (g_Bundle.mapName.Length > 0 ? g_Bundle.mapName : "-"));
     UI::Text("Current map: " + (g_CurrentMapName.Length > 0 ? g_CurrentMapName : "-"));
+    UI::Text("Bundle range: " + GetSelectedBundleLabel());
+    UI::Text("Bundle file: " + g_SelectedBundleFileName);
     UI::Text("Mine run: " + (g_Bundle.mineRunName.Length > 0 ? g_Bundle.mineRunName : "-"));
     UI::Text("Center points: " + g_Bundle.centerLine.Length);
     UI::Text("Mine points: " + g_Bundle.mineLine.Length);

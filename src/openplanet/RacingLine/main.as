@@ -19,7 +19,11 @@ string g_CurrentUserLogin = "";
 string g_SelectedBundleFileName = DefaultBundleFileName;
 string g_BundlePath = "";
 array<string> g_AvailableBundleFiles;
+array<string> g_AvailableBundleLabels;
+array<int> g_AvailableBundleRangeStarts;
+array<int> g_AvailableBundleRangeEnds;
 int g_SelectedBundleIndex = -1;
+uint64 g_LastBundleRefreshTime = 0;
 string g_PipelineProjectRoot = PipelineProjectRoot;
 int g_PipelineRangeFrom = PipelineDefaultRangeFrom;
 int g_PipelineRangeTo = PipelineDefaultRangeTo;
@@ -107,6 +111,9 @@ void UpdateCurrentUser() {
 
 void RefreshBundleFiles() {
     g_AvailableBundleFiles.Resize(0);
+    g_AvailableBundleLabels.Resize(0);
+    g_AvailableBundleRangeStarts.Resize(0);
+    g_AvailableBundleRangeEnds.Resize(0);
     g_SelectedBundleIndex = -1;
 
     if (g_CurrentMapFolderName.Length == 0) {
@@ -122,13 +129,19 @@ void RefreshBundleFiles() {
                 continue;
             }
 
-            g_AvailableBundleFiles.InsertLast(fileName);
-            if (fileName == g_SelectedBundleFileName) {
-                g_SelectedBundleIndex = int(g_AvailableBundleFiles.Length) - 1;
-            }
+            InsertBundleFileSorted(fileName);
         }
     } catch {
         return;
+    }
+
+    g_LastBundleRefreshTime = Time::Now;
+
+    for (uint i = 0; i < g_AvailableBundleFiles.Length; i++) {
+        if (g_AvailableBundleFiles[i] == g_SelectedBundleFileName) {
+            g_SelectedBundleIndex = int(i);
+            break;
+        }
     }
 
     if (g_SelectedBundleIndex >= 0) {
@@ -149,6 +162,135 @@ void RefreshBundleFiles() {
     } else {
         g_SelectedBundleFileName = DefaultBundleFileName;
     }
+}
+
+void AutoRefreshBundleFiles() {
+    uint64 now = Time::Now;
+    if (g_LastBundleRefreshTime == 0 || now < g_LastBundleRefreshTime || now - g_LastBundleRefreshTime >= 2000) {
+        string previousSelected = g_SelectedBundleFileName;
+        RefreshBundleFiles();
+        if (previousSelected != g_SelectedBundleFileName && g_BundleLoaded) {
+            g_SelectedBundleFileName = previousSelected;
+            RefreshBundleFiles();
+        }
+        if (!g_BundleLoaded && IsBundleFileAvailable(g_SelectedBundleFileName)) {
+            ReloadBundle();
+        }
+    }
+}
+
+bool IsBundleFileAvailable(const string &in fileName) {
+    for (uint i = 0; i < g_AvailableBundleFiles.Length; i++) {
+        if (g_AvailableBundleFiles[i] == fileName) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void InsertBundleFileSorted(const string &in fileName) {
+    int start = 0;
+    int end = 0;
+    bool hasRange = TryParseBundleRange(fileName, start, end);
+    string label = hasRange ? "" + start + "-" + end : fileName;
+
+    uint insertIndex = g_AvailableBundleFiles.Length;
+    for (uint i = 0; i < g_AvailableBundleFiles.Length; i++) {
+        if (CompareBundleRange(start, end, fileName, g_AvailableBundleRangeStarts[i], g_AvailableBundleRangeEnds[i], g_AvailableBundleFiles[i]) < 0) {
+            insertIndex = i;
+            break;
+        }
+    }
+
+    g_AvailableBundleFiles.InsertAt(insertIndex, fileName);
+    g_AvailableBundleLabels.InsertAt(insertIndex, label);
+    g_AvailableBundleRangeStarts.InsertAt(insertIndex, start);
+    g_AvailableBundleRangeEnds.InsertAt(insertIndex, end);
+}
+
+int CompareBundleRange(int leftStart, int leftEnd, const string &in leftName, int rightStart, int rightEnd, const string &in rightName) {
+    if (leftStart != rightStart) {
+        return leftStart < rightStart ? -1 : 1;
+    }
+    if (leftEnd != rightEnd) {
+        return leftEnd < rightEnd ? -1 : 1;
+    }
+    return leftName == rightName ? 0 : 1;
+}
+
+bool TryParseBundleRange(const string &in fileName, int &out start, int &out end) {
+    start = 0;
+    end = 0;
+
+    if (!fileName.StartsWith("top_") || !fileName.EndsWith(".analysis_bundle.json")) {
+        return false;
+    }
+
+    string rangePart = fileName.SubStr(4, fileName.Length - 4 - 21);
+    int separator = -1;
+    for (uint i = 0; i < rangePart.Length; i++) {
+        if (rangePart.SubStr(i, 1) == "_") {
+            separator = int(i);
+            break;
+        }
+    }
+    if (separator <= 0 || separator >= int(rangePart.Length) - 1) {
+        return false;
+    }
+
+    string startText = rangePart.SubStr(0, uint(separator));
+    string endText = rangePart.SubStr(uint(separator + 1));
+    if (!IsAllDigits(startText) || !IsAllDigits(endText)) {
+        return false;
+    }
+
+    start = ParsePositiveInt(startText);
+    end = ParsePositiveInt(endText);
+    return start > 0 && end >= start;
+}
+
+int ParsePositiveInt(const string &in value) {
+    int result = 0;
+    for (uint i = 0; i < value.Length; i++) {
+        string ch = value.SubStr(i, 1);
+        result *= 10;
+        if (ch == "1") result += 1;
+        else if (ch == "2") result += 2;
+        else if (ch == "3") result += 3;
+        else if (ch == "4") result += 4;
+        else if (ch == "5") result += 5;
+        else if (ch == "6") result += 6;
+        else if (ch == "7") result += 7;
+        else if (ch == "8") result += 8;
+        else if (ch == "9") result += 9;
+    }
+    return result;
+}
+
+bool IsAllDigits(const string &in value) {
+    if (value.Length == 0) {
+        return false;
+    }
+    for (uint i = 0; i < value.Length; i++) {
+        if (!IsDigit(value.SubStr(i, 1))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+string GetSelectedBundleLabel() {
+    if (g_SelectedBundleIndex >= 0 && g_SelectedBundleIndex < int(g_AvailableBundleLabels.Length)) {
+        return g_AvailableBundleLabels[uint(g_SelectedBundleIndex)];
+    }
+
+    int start = 0;
+    int end = 0;
+    if (TryParseBundleRange(g_SelectedBundleFileName, start, end)) {
+        return "" + start + "-" + end;
+    }
+
+    return g_SelectedBundleFileName;
 }
 
 string BuildCurrentMapBundlePath(const string &in fileName) {

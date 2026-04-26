@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -47,6 +50,12 @@ def main() -> None:
         help="Exact directory for downloaded ghosts. Overrides --ghost-output-root/<map>/top_<range>.",
     )
     parser.add_argument("--force-download-ghosts", action="store_true", help="Redownload ghosts that already exist.")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Ignore pipeline cache, redownload ghosts when enabled, re-extract inputs, rerun analysis, and rebuild the bundle.",
+    )
+    parser.add_argument("--disable-cache", action="store_true", help="Disable input hash cache and use the legacy full rebuild flow.")
     parser.add_argument(
         "--include-mine-replay",
         action="store_true",
@@ -92,6 +101,8 @@ def main() -> None:
         help="Do not remove existing plot files from the selected map output folder before analysis.",
     )
     args = parser.parse_args()
+    if args.force:
+        args.force_download_ghosts = True
 
     replay_input_dir = args.replay_input_dir or _default_replay_input_dir(args.map_name)
     bundle_name = args.bundle_name or f"top_{_normalize_range(args.rank_range)}.analysis_bundle.json"
@@ -100,6 +111,16 @@ def main() -> None:
     analysis_json = PROCESSED_DIR / args.map_name / "analysis_data.json"
     bundle_path = PROCESSED_DIR / args.map_name / bundle_name
     plot_output_dir = PLOTS_DIR / args.map_name
+    cache_manifest_path = _cache_manifest_path(args.map_name, args.rank_range)
+    cache_enabled = not args.disable_cache and not args.skip_extract
+    cache_skipped_build = False
+    cache_settings = {
+        "map_name": args.map_name,
+        "rank_range": args.rank_range,
+        "mine": args.mine,
+        "samples": args.samples,
+        "allow_missing_mine": args.allow_missing_mine,
+    }
 
     if args.download_ghosts:
         if not args.leaderboard_id:
@@ -137,8 +158,53 @@ def main() -> None:
             recursive=args.recursive_replays,
         )
 
+    current_inputs: list[dict[str, Any]] = []
+    previous_manifest: dict[str, Any] | None = None
+    changed_inputs: list[dict[str, Any]] | None = None
+    extraction_input_dir = replay_input_dir
+    extraction_recursive = args.recursive_replays
+
+    if cache_enabled:
+        current_inputs = build_input_manifest_entries(replay_input_dir, args.recursive_replays, args.map_name, trajectory_source_dir)
+        previous_manifest = load_cache_manifest(cache_manifest_path)
+        cache_state = evaluate_cache_state(
+            previous_manifest=previous_manifest,
+            current_inputs=current_inputs,
+            current_settings=cache_settings,
+            trajectory_source_dir=trajectory_source_dir,
+            analysis_json=analysis_json,
+            bundle_path=bundle_path,
+            map_name=args.map_name,
+        )
+
+        if cache_state["complete"] and not args.force:
+            print("Pipeline cache hit: replay/ghost inputs unchanged; skipping extraction, analysis, and bundle rebuild.", flush=True)
+            cache_skipped_build = True
+        elif not args.force and cache_state["can_extract_partial"]:
+            changed_inputs = cache_state["changed_inputs"]
+            remove_stale_cached_trajectories(previous_manifest, current_inputs)
+            if len(changed_inputs) == 0:
+                print("Pipeline cache: inputs unchanged but derived outputs are missing; reusing trajectories and rebuilding analysis/bundle.", flush=True)
+                args.skip_extract = True
+            else:
+                extraction_input_dir = prepare_cached_extraction_input_dir(changed_inputs, args.map_name, args.rank_range)
+                extraction_recursive = False
+                print(
+                    f"Pipeline cache: extracting {len(changed_inputs)} changed/new input(s); "
+                    f"reusing {len(current_inputs) - len(changed_inputs)} cached trajectory file(s).",
+                    flush=True,
+                )
+        elif args.force:
+            print("Pipeline cache bypassed by --force; rebuilding all pipeline outputs.", flush=True)
+
+    if cache_skipped_build:
+        if not args.skip_install:
+            installed_path = install_bundle(bundle_path, args.storage_root, args.map_name, bundle_name)
+            print(f"Installed: {installed_path}")
+        return
+
     if not args.skip_extract:
-        if not args.keep_old_trajectories:
+        if not args.keep_old_trajectories and (not cache_enabled or args.force or changed_inputs is None):
             clean_trajectory_dir(trajectory_source_dir)
 
         extract_cmd = [
@@ -148,13 +214,13 @@ def main() -> None:
             str(EXTRACTOR_PROJECT),
             "--",
             "--replay-dir",
-            str(replay_input_dir),
+            str(extraction_input_dir),
             "--output-root",
             str(args.trajectory_output_root),
             "--map",
             args.map_name,
         ]
-        if args.recursive_replays:
+        if extraction_recursive:
             extract_cmd.append("--recursive")
         _run(extract_cmd)
 
@@ -192,6 +258,17 @@ def main() -> None:
         ]
     )
 
+    if cache_enabled:
+        save_cache_manifest(
+            cache_manifest_path,
+            map_name=args.map_name,
+            rank_range=args.rank_range,
+            inputs=current_inputs,
+            settings=cache_settings,
+            analysis_json=analysis_json,
+            bundle_path=bundle_path,
+        )
+
     if not args.skip_install:
         installed_path = install_bundle(bundle_path, args.storage_root, args.map_name, bundle_name)
         print(f"Installed: {installed_path}")
@@ -206,6 +283,170 @@ def install_bundle(bundle_path: Path, storage_root: Path, map_name: str, bundle_
     target_path = target_dir / bundle_name
     shutil.copy2(bundle_path, target_path)
     return target_path
+
+
+def build_input_manifest_entries(input_dir: Path, recursive: bool, map_name: str, trajectory_source_dir: Path) -> list[dict[str, Any]]:
+    if not input_dir.exists() or not input_dir.is_dir():
+        raise FileNotFoundError(f"Replay/ghost input directory not found: {input_dir}")
+
+    entries: list[dict[str, Any]] = []
+    for path in iter_replay_input_files(input_dir, recursive):
+        resolved = path.resolve()
+        entries.append(
+            {
+                "name": path.name,
+                "path": str(resolved),
+                "sha256": hash_file(resolved),
+                "size": resolved.stat().st_size,
+                "trajectory_path": str(expected_trajectory_path(trajectory_source_dir, map_name, path.name)),
+            }
+        )
+
+    entries.sort(key=lambda entry: entry["name"].lower())
+    if not entries:
+        raise FileNotFoundError(f"No replay or ghost files found in: {input_dir}")
+    return entries
+
+
+def evaluate_cache_state(
+    previous_manifest: dict[str, Any] | None,
+    current_inputs: list[dict[str, Any]],
+    current_settings: dict[str, Any],
+    trajectory_source_dir: Path,
+    analysis_json: Path,
+    bundle_path: Path,
+    map_name: str,
+) -> dict[str, Any]:
+    if previous_manifest is None:
+        return {"complete": False, "can_extract_partial": False, "changed_inputs": current_inputs}
+    settings_unchanged = previous_manifest.get("settings") == current_settings
+
+    previous_inputs = previous_manifest.get("inputs")
+    if not isinstance(previous_inputs, list):
+        return {"complete": False, "can_extract_partial": False, "changed_inputs": current_inputs}
+
+    previous_by_name = {
+        str(entry.get("name")): entry
+        for entry in previous_inputs
+        if isinstance(entry, dict) and entry.get("name") is not None
+    }
+    current_by_name = {str(entry["name"]): entry for entry in current_inputs}
+
+    changed_inputs: list[dict[str, Any]] = []
+    for current in current_inputs:
+        previous = previous_by_name.get(str(current["name"]))
+        trajectory_path = Path(str(current["trajectory_path"]))
+        if (
+            previous is None
+            or previous.get("sha256") != current["sha256"]
+            or previous.get("size") != current["size"]
+            or not trajectory_path.exists()
+        ):
+            changed_inputs.append(current)
+
+    removed_names = set(previous_by_name.keys()) - set(current_by_name.keys())
+    derived_outputs_exist = analysis_json.exists() and bundle_path.exists()
+    all_trajectories_exist = all(Path(str(entry["trajectory_path"])).exists() for entry in current_inputs)
+    unchanged = settings_unchanged and len(changed_inputs) == 0 and len(removed_names) == 0
+
+    return {
+        "complete": unchanged and all_trajectories_exist and derived_outputs_exist,
+        "can_extract_partial": True,
+        "changed_inputs": changed_inputs,
+    }
+
+
+def remove_stale_cached_trajectories(previous_manifest: dict[str, Any] | None, current_inputs: list[dict[str, Any]]) -> None:
+    if previous_manifest is None:
+        return
+
+    previous_inputs = previous_manifest.get("inputs")
+    if not isinstance(previous_inputs, list):
+        return
+
+    current_names = {str(entry["name"]) for entry in current_inputs}
+    removed_count = 0
+    for previous in previous_inputs:
+        if not isinstance(previous, dict) or str(previous.get("name")) in current_names:
+            continue
+
+        trajectory_value = previous.get("trajectory_path")
+        if not isinstance(trajectory_value, str):
+            continue
+
+        trajectory_path = Path(trajectory_value)
+        if trajectory_path.exists() and trajectory_path.is_file():
+            trajectory_path.unlink()
+            removed_count += 1
+
+    if removed_count > 0:
+        print(f"Pipeline cache: removed {removed_count} stale trajectory file(s).", flush=True)
+
+
+def prepare_cached_extraction_input_dir(changed_inputs: list[dict[str, Any]], map_name: str, rank_range: str) -> Path:
+    input_dir = TEMP_DIR / "pipeline_cache_inputs" / _sanitize_path_part(map_name) / f"top_{_normalize_range(rank_range)}"
+    clean_directory(input_dir)
+    input_dir.mkdir(parents=True, exist_ok=True)
+
+    for entry in changed_inputs:
+        source = Path(str(entry["path"]))
+        shutil.copy2(source, input_dir / str(entry["name"]))
+
+    return input_dir
+
+
+def load_cache_manifest(path: Path) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+    return payload if isinstance(payload, dict) else None
+
+
+def save_cache_manifest(
+    path: Path,
+    map_name: str,
+    rank_range: str,
+    inputs: list[dict[str, Any]],
+    settings: dict[str, Any],
+    analysis_json: Path,
+    bundle_path: Path,
+) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "schema": "racingline.pipeline_cache.v1",
+        "map_name": map_name,
+        "rank_range": rank_range,
+        "settings": settings,
+        "inputs": inputs,
+        "analysis_json": str(analysis_json),
+        "bundle_path": str(bundle_path),
+    }
+    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"Pipeline cache manifest: {path}", flush=True)
+
+
+def hash_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def expected_trajectory_path(trajectory_source_dir: Path, map_name: str, input_file_name: str) -> Path:
+    input_stem = Path(input_file_name).stem
+    prefix = f"{map_name}_"
+    output_stem = input_stem if input_stem.lower().startswith(prefix.lower()) else f"{prefix}{input_stem}"
+    return trajectory_source_dir / f"{output_stem}.trajectory.json"
+
+
+def _cache_manifest_path(map_name: str, rank_range: str) -> Path:
+    return TEMP_DIR / "pipeline_cache" / _sanitize_path_part(map_name) / f"top_{_normalize_range(rank_range)}.json"
 
 
 def clean_trajectory_dir(trajectory_source_dir: Path) -> None:

@@ -115,6 +115,9 @@ def main() -> None:
             continue
         entries.append(process_top_entry(args.base_url, output_dir, top, args.force, args.metadata_only))
 
+    if not args.metadata_only:
+        remove_stale_ghost_files(output_dir, entries)
+
     manifest = {
         "schema": "racingline.trackmaniaio_ghost_manifest.v1",
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -145,6 +148,23 @@ def main() -> None:
 
     if failed_count > 0:
         raise SystemExit(1)
+
+
+def remove_stale_ghost_files(output_dir: Path, entries: list[dict[str, Any]]) -> None:
+    expected_paths = {
+        Path(str(entry["local_path"])).resolve()
+        for entry in entries
+        if entry.get("local_path")
+    }
+    removed_count = 0
+    for path in output_dir.glob("*.Ghost.Gbx"):
+        if path.resolve() in expected_paths:
+            continue
+        path.unlink()
+        removed_count += 1
+
+    if removed_count > 0:
+        print(f"Removed stale ghost files: {removed_count}")
 
 
 def parse_rank_range(value: str) -> RankRange:

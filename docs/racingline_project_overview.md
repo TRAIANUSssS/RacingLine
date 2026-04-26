@@ -480,17 +480,15 @@ python .\pipeline.py --map "Spring 2026 - 02" --mine "TRAIANUSssS" --range "1000
 
 ### Stage 7 - Full pipeline trigger
 
-Allow running the full pipeline from a single command:
+Status: skipped as unnecessary.
 
-```powershell
-full_pipeline.bat
-```
+Reason:
 
-or Python equivalent.
+- `pipeline.py` is already the single full-pipeline entry point
+- the useful runtime variables are too numerous for one practical hardcoded `.bat`
+- the OpenPlanet UI already generates the command with map, player, range, and replay input values
 
-Later extension:
-
-- optional OpenPlanet button to trigger pipeline
+Future work should focus on better command presets/configuration instead of a single `full_pipeline.bat`.
 
 ### Stage 8 - Bundle management
 
@@ -505,6 +503,18 @@ Ensure OpenPlanet UI:
 
 - lists available bundles
 - allows switching between them
+- displays compact rank range labels instead of raw filenames
+- sorts ranges from lower to higher ranks
+- shows selected bundle metadata in the Info block
+- refreshes the available bundle list automatically while the UI is open
+
+Current implementation:
+
+- implemented in the OpenPlanet viewer
+- bundle files are stored per map under `bundles/<map>/`
+- filenames still use `top_<range>.analysis_bundle.json` on disk
+- the UI shows labels such as `100-110` and `1000-1020`
+- the selected bundle can be reloaded after an external pipeline run
 
 ### Stage 9 - Caching
 
@@ -513,6 +523,32 @@ Avoid recomputation when possible:
 - reuse already downloaded replays
 - skip already processed trajectories
 - skip bundle rebuild if inputs unchanged
+
+Required scenarios:
+
+1. All replay/ghost inputs are identical to the previous run:
+   - skip extraction
+   - skip analysis
+   - skip bundle rebuild when the bundle already exists
+2. Some replay/ghost inputs changed:
+   - download only missing uncached ghosts unless forced
+   - extract only changed/new inputs
+   - rerun analysis and rebuild the bundle
+3. Forced rebuild:
+   - redownload ghosts when ghost downloading is enabled
+   - re-extract all inputs
+   - rerun analysis and rebuild the bundle regardless of cache state
+
+Current implementation:
+
+- downloaded ghosts are reused unless `--force-download-ghosts` or `--force` is passed
+- stale `.Ghost.Gbx` files in a downloaded range folder are removed when the latest manifest no longer references them
+- `pipeline.py` stores input SHA-256 hashes and analysis settings in `data/temp/pipeline_cache/<map>/top_<range>.json`
+- unchanged inputs with an existing bundle skip extraction, analysis, and bundle rebuild
+- changed/new inputs are extracted through a temporary cache input folder while existing trajectory JSON files are reused
+- removed inputs delete their stale cached trajectory JSON files before analysis
+- `--force` bypasses the cache and rebuilds everything
+- `--disable-cache` keeps the old full-rebuild behavior
 
 Goal:
 
