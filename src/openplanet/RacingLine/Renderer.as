@@ -5,6 +5,8 @@ uint g_LastSkippedMineSegments = 0;
 uint g_LastProjectedProblemZones = 0;
 uint g_LastSkippedProblemZones = 0;
 uint g_LastCameraCount = 0;
+bool g_LastRenderReferenceAvailable = false;
+vec3 g_LastRenderReferencePos = vec3();
 
 bool ProjectWorldPoint(const vec3 &in worldPos, vec2 &out screenPos) {
     CGameApp@ app = GetApp();
@@ -32,6 +34,51 @@ bool ProjectWorldPoint(const vec3 &in worldPos, vec2 &out screenPos) {
     return true;
 }
 
+bool TryGetCurrentCarPosition(vec3 &out carPos) {
+    CTrackMania@ app = cast<CTrackMania>(GetApp());
+    if (app is null || app.CurrentPlayground is null) {
+        return false;
+    }
+
+    CSmArenaClient@ playground = cast<CSmArenaClient>(app.CurrentPlayground);
+    if (playground is null || playground.GameTerminals.Length == 0 || playground.GameTerminals[0] is null) {
+        return false;
+    }
+
+    CSmPlayer@ player = cast<CSmPlayer>(playground.GameTerminals[0].ControlledPlayer);
+    if (player is null || player.ScriptAPI is null) {
+        return false;
+    }
+
+    CSmScriptPlayer@ scriptPlayer = cast<CSmScriptPlayer>(player.ScriptAPI);
+    if (scriptPlayer is null || !scriptPlayer.IsEntityStateAvailable) {
+        return false;
+    }
+
+    carPos = scriptPlayer.Position;
+    return true;
+}
+
+float DistanceSquared(const vec3 &in a, const vec3 &in b) {
+    float dx = a.x - b.x;
+    float dy = a.y - b.y;
+    float dz = a.z - b.z;
+    return dx * dx + dy * dy + dz * dz;
+}
+
+bool IsPointInsideRenderDistance(const vec3 &in worldPos) {
+    if (g_ShowFullTrajectory || !g_LastRenderReferenceAvailable) {
+        return true;
+    }
+
+    float distance = Math::Max(g_RenderDistance, 0.0f);
+    return DistanceSquared(worldPos, g_LastRenderReferencePos) <= distance * distance;
+}
+
+bool IsSegmentInsideRenderDistance(const vec3 &in a, const vec3 &in b) {
+    return IsPointInsideRenderDistance(a) || IsPointInsideRenderDistance(b);
+}
+
 void DrawCenterLine() {
     g_LastProjectedCenterSegments = 0;
     g_LastSkippedCenterSegments = 0;
@@ -54,6 +101,12 @@ void DrawCenterLine() {
         CenterPoint@ prev = g_Bundle.centerLine[i - 1];
         CenterPoint@ curr = g_Bundle.centerLine[i];
         if (prev is null || curr is null) {
+            hasOpenSubPath = false;
+            continue;
+        }
+
+        if (!IsSegmentInsideRenderDistance(prev.pos, curr.pos)) {
+            g_LastSkippedCenterSegments++;
             hasOpenSubPath = false;
             continue;
         }
@@ -108,6 +161,11 @@ void DrawSpeedDeltaCenterLine() {
         CenterPoint@ prev = g_Bundle.centerLine[i - 1];
         CenterPoint@ curr = g_Bundle.centerLine[i];
         if (prev is null || curr is null) {
+            continue;
+        }
+
+        if (!IsSegmentInsideRenderDistance(prev.pos, curr.pos)) {
+            g_LastSkippedCenterSegments++;
             continue;
         }
 
@@ -178,6 +236,12 @@ void DrawMineLine() {
             continue;
         }
 
+        if (!IsSegmentInsideRenderDistance(prev.pos, curr.pos)) {
+            g_LastSkippedMineSegments++;
+            hasOpenSubPath = false;
+            continue;
+        }
+
         vec2 a;
         vec2 b;
         if (!ProjectWorldPoint(prev.pos, a) || !ProjectWorldPoint(curr.pos, b)) {
@@ -214,6 +278,11 @@ void DrawProblemZones() {
             continue;
         }
 
+        if (!IsPointInsideRenderDistance(zone.pos)) {
+            g_LastSkippedProblemZones++;
+            continue;
+        }
+
         vec2 screenPos;
         if (!ProjectWorldPoint(zone.pos, screenPos)) {
             g_LastSkippedProblemZones++;
@@ -239,6 +308,7 @@ void RenderWorldOverlay() {
     g_LastSkippedMineSegments = 0;
     g_LastProjectedProblemZones = 0;
     g_LastSkippedProblemZones = 0;
+    g_LastRenderReferenceAvailable = g_ShowFullTrajectory ? false : TryGetCurrentCarPosition(g_LastRenderReferencePos);
 
     if (!g_BundleLoaded) {
         return;

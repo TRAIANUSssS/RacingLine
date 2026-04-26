@@ -599,28 +599,23 @@ Current recommendation:
 
 ### Stage 12 - Viewer render distance filtering
 
+Status: implemented for the simple distance-based MVP.
+
 Problem:
 
 - the viewer currently renders every projected point that is visible on screen
 - this can show route segments that are far away from the car
 - it can also show points behind walls or map geometry if the projection succeeds
 
-Preferred MVP v2 approach:
+Current implementation:
 
-- add a render distance control in the viewer
-- compare each rendered world point or segment against the current car position
-- skip center line, mine line, other player lines, and problem zone markers outside the configured distance
-- default to a conservative value such as `300` game units, then tune after in-game testing
-
-Alternative idea:
-
-- render only the next N seconds of the route relative to current run progress
-
-Reason to defer the time-window approach:
-
-- it requires reliable real-time mapping between the current live run and the offline trajectory progress/time
-- it may need live car sample tracking and nearest-progress matching
-- this can be useful later, but distance filtering is simpler and likely good enough for the next viewer iteration
+- the viewer has a `Show Full Trajectory` checkbox
+- when full trajectory mode is enabled, the overlay renders the whole selected bundle as before
+- when full trajectory mode is disabled, the viewer uses a `Render Distance` slider
+- the default render distance is `300` game units
+- center line, mine line, and problem zone markers all use the same distance filter
+- line segments are kept when at least one segment endpoint is inside the configured distance from the current car position
+- if the current car position is not available, the viewer falls back to rendering without distance filtering
 
 Open question:
 
@@ -693,6 +688,27 @@ Planned direction:
 - hide technical paths, detailed counters, raw status fields, and pipeline internals when developer mode is disabled
 - keep those details available when debugging bundle loading, rendering, or pipeline handoff
 - decide exact UI grouping when this stage starts, based on the then-current UI
+
+### Stage 16 - Live progress lookahead rendering
+
+Status: future extension.
+
+Goal:
+
+- render only the next route window relative to the current live run progress, such as the next 5 seconds or nearest future trajectory segment
+
+Possible approach:
+
+- read the current live car position
+- match it to the nearest progress point on `mine_line` or `center_line`
+- render only a lookahead window from that matched progress/index
+- smooth or constrain the matched index so it does not jump backward or between overlapping route sections
+
+Reason to defer:
+
+- it requires reliable real-time mapping between the current live run and the offline trajectory progress/time
+- it may need live car sample tracking and nearest-progress matching
+- this can be useful later, but distance filtering is simpler and likely good enough for the next viewer iteration
 
 ## MVP v3 Plan (User Mode / Plugin-First Distribution)
 

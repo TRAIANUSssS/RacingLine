@@ -151,6 +151,10 @@ void RenderToggleSection() {
     g_ShowProblemZones = UI::Checkbox("Show Problem Zones", g_ShowProblemZones);
 
     UI::Text("Render Settings");
+    g_ShowFullTrajectory = UI::Checkbox("Show Full Trajectory", g_ShowFullTrajectory);
+    if (!g_ShowFullTrajectory) {
+        g_RenderDistance = UI::SliderFloat("Render Distance", g_RenderDistance, 50.0f, 2000.0f);
+    }
     g_CenterLineWidth = UI::SliderFloat("Center width", g_CenterLineWidth, 1.0f, 10.0f);
     g_MineLineWidth = UI::SliderFloat("Mine width", g_MineLineWidth, 1.0f, 10.0f);
     g_ProblemZoneMarkerSize = UI::SliderFloat("Problem marker size", g_ProblemZoneMarkerSize, 2.0f, 32.0f);

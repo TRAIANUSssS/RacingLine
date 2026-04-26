@@ -15,6 +15,8 @@ float CenterLineWidth = 3.0f;
 float MineLineWidth = 3.0f;
 float ProblemZoneMarkerSize = 8.0f;
 int MaxVisibleProblemZones = 5;
+bool ShowFullTrajectory = false;
+float RenderDistance = 300.0f;
 
 vec4 DebugPointColor = vec4(0.1f, 0.8f, 1.0f, 1.0f);
 float DebugPointRadius = 3.0f;
