@@ -143,10 +143,17 @@ The old flat storage path `PluginStorage/RacingLine/analysis_bundle.json` is no 
 
 ## Suggested next rendering work
 
-1. Keep current loader, UI, toggles, and layer rendering stable
-2. Improve styling for problem zone markers if needed
-3. Add richer zone labels or details only after the marker layer is stable
-4. Avoid redesigning the bundle schema unless the analyzer needs new viewer fields
+1. Add viewer render distance filtering based on distance from the current car position
+2. Add optional rendering for other analyzed player trajectories
+3. Expose analysis sample count in the pipeline UI / generated command
+4. Add a developer/debug mode toggle and move technical UI details behind it
+5. Improve styling for problem zone markers if needed
+6. Add richer zone labels or details only after the marker layer is stable
+7. Avoid redesigning the bundle schema unless the analyzer needs new viewer fields
+
+Render distance filtering is the preferred first solution for reducing far-away visual clutter. A future time-window mode, such as rendering only the next 5 seconds of the route, would require reliable live-run progress matching and should be treated as a later extension.
+
+Other player trajectory rendering should start with a simple `Show Other Runs` checkbox that draws all non-mine runs quietly. A per-player checkbox list can be added later if the bundle metadata and UI complexity justify it.
 
 ## Pipeline automation
 

@@ -204,9 +204,12 @@ The current pipeline cache behavior is:
 - `--force` bypasses the pipeline cache, forces ghost redownload when ghost downloading is enabled, and rebuilds all outputs
 - `--disable-cache` restores the legacy full extraction/rebuild behavior without using the input hash cache
 
-The next pipeline evolution is:
+Current stability status:
 
-- verify the pipeline across multiple maps and leaderboard ranges
+- the end-to-end MVP flow has been verified from replay/ghost input through bundle installation and in-game visualization
+- multiple maps can be handled through per-map bundle folders
+- multiple leaderboard ranges can be handled through named bundles and Openplanet bundle selection
+- future testing should focus on regressions, unusual maps, missing/partial inputs, and distribution packaging
 
 ## Default paths
 

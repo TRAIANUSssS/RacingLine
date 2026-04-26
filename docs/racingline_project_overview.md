@@ -557,32 +557,164 @@ Goal:
 
 ### Stage 10 - Stability and testing
 
-Verify full pipeline:
+Status: complete for the current MVP.
+
+Verified behavior:
 
 - from raw replays to in-game visualization
 - across multiple maps
 - across different leaderboard ranges
+- Openplanet detects the current map and loads bundles from that map folder
+- the viewer can switch between installed bundles for the current map
+- center line, mine line, problem zones, speed coloring, toggles, and render controls work with generated bundles
+- the pipeline can download/reuse ghosts, include the current player's mine replay, build the bundle, install it, and let the viewer pick it up
 
 Goal:
 
 - ensure end-to-end reliability
 
-### Stage 11 - Preparation for distribution
+Future stability work should focus on regression testing and edge cases, not on proving the MVP flow again.
 
-Prepare two usage modes:
+### Stage 11 - Developer mode distribution preparation
 
-1. Developer mode (current):
-   - full pipeline (C# + Python + OpenPlanet)
-2. User mode (future):
-   - OpenPlanet viewer plugin
-   - consumes prebuilt bundles
+Status: partially implemented.
 
-Decision point:
+Current developer mode:
 
-- whether to move parts of pipeline into AngelScript
-- or keep heavy processing external
+- full pipeline uses C# + Python + OpenPlanet
+- external `pipeline.py` orchestration is implemented
+- Openplanet command handoff is implemented
+- local bundle generation and installation are implemented
+
+Goal:
+
+- keep developer usage reproducible and documented before broader distribution
+- avoid moving heavy processing into the plugin while the workflow is still changing
 
 Current recommendation:
 
-- keep extraction and analytics outside OpenPlanet
-- publish viewer-first plugin initially
+- keep extraction and analytics outside OpenPlanet for MVP v2
+- publish/refine viewer-first plugin behavior against prepared bundles
+- finish workflow and UX improvements around the existing external pipeline first
+
+### Stage 12 - Viewer render distance filtering
+
+Problem:
+
+- the viewer currently renders every projected point that is visible on screen
+- this can show route segments that are far away from the car
+- it can also show points behind walls or map geometry if the projection succeeds
+
+Preferred MVP v2 approach:
+
+- add a render distance control in the viewer
+- compare each rendered world point or segment against the current car position
+- skip center line, mine line, other player lines, and problem zone markers outside the configured distance
+- default to a conservative value such as `300` game units, then tune after in-game testing
+
+Alternative idea:
+
+- render only the next N seconds of the route relative to current run progress
+
+Reason to defer the time-window approach:
+
+- it requires reliable real-time mapping between the current live run and the offline trajectory progress/time
+- it may need live car sample tracking and nearest-progress matching
+- this can be useful later, but distance filtering is simpler and likely good enough for the next viewer iteration
+
+Open question:
+
+- whether Openplanet exposes a reliable depth/occlusion test for hiding points behind map geometry
+
+### Stage 13 - Other player trajectory rendering
+
+Goal:
+
+- add an optional viewer layer for trajectories from the analyzed replay/ghost set
+
+Initial MVP v2 behavior:
+
+- add a `Show Other Runs` checkbox
+- render all non-mine runs from the bundle as lightweight lines
+- keep the layer visually quieter than center/mine lines
+- respect the same render distance filtering as other overlay layers
+
+Reasoning:
+
+- this is close to the existing mine line rendering path
+- a single-player inspection can already be approximated by building a bundle with a range such as `1000-1000`
+
+Possible later extension:
+
+- add a selectable run list with checkboxes
+- allow showing all runs, no runs, or selected specific players
+- add filtering by rank/player name if the bundle contains enough metadata
+
+### Stage 14 - Analysis sample count control
+
+Problem:
+
+- analysis currently uses a fixed sample count such as `300`
+- short maps and long maps get the same number of key analysis points
+- a 15-second map and a 3-minute map need different point density
+
+Possible approaches:
+
+- expose sample count in the Openplanet pipeline UI and generated command
+- add a `--samples` field to the user-facing workflow if it is not already visible there
+- optionally compute a recommended sample count from replay duration
+
+Preferred MVP v2 approach:
+
+- first expose manual sample count control so the user can tune density per map
+- later add an automatic recommendation based on representative replay duration
+
+Automatic recommendation idea:
+
+- estimate map duration from analyzed replay/ghost times
+- choose a target density per time interval, for example several hundred samples per 20 seconds
+- clamp to reasonable minimum and maximum values to avoid huge bundles or overly sparse overlays
+
+### Stage 15 - UI cleanup and dev mode toggle
+
+Problem:
+
+- the current Openplanet UI exposes too much technical information for normal use
+- paths, debug counters, technical status, and always-correct metadata make the player-facing UI noisy
+
+Goal:
+
+- add a developer/debug mode toggle
+- keep the default UI focused on information and controls useful while driving or inspecting a line
+
+Planned direction:
+
+- add a `dev_mode` or `Developer Mode` checkbox
+- hide technical paths, detailed counters, raw status fields, and pipeline internals when developer mode is disabled
+- keep those details available when debugging bundle loading, rendering, or pipeline handoff
+- decide exact UI grouping when this stage starts, based on the then-current UI
+
+## MVP v3 Plan (User Mode / Plugin-First Distribution)
+
+MVP v3 is a separate project step. It should not block MVP v2 viewer and pipeline improvements.
+
+Primary goal:
+
+- prepare a user-facing mode that does not require the local developer pipeline
+
+Expected user mode:
+
+- OpenPlanet viewer plugin
+- consumes prebuilt `.analysis_bundle.json` files
+- does not require local C#, Python, or GBX extraction setup
+
+Major decision point:
+
+- whether to move parts of extraction, orchestration, or analysis into AngelScript
+- or keep heavy processing external and distribute prebuilt bundles separately
+
+Current recommendation:
+
+- do not rewrite the pipeline into AngelScript yet
+- first finish MVP v2 workflow and viewer UX improvements
+- revisit AngelScript migration only after the external process and data contract are stable enough to know what should actually move into the plugin
