@@ -99,7 +99,16 @@ def main() -> None:
         help="Auto sample density. Used only with --sample-mode auto.",
     )
     parser.add_argument("--skip-extract", action="store_true", help="Skip replay extraction.")
-    parser.add_argument("--skip-plots", action="store_true", help="Skip plot outputs during analysis.")
+    parser.add_argument(
+        "--write-plots",
+        action="store_true",
+        help="Write developer/debug plot outputs during analysis. The default user flow skips plots.",
+    )
+    parser.add_argument(
+        "--skip-plots",
+        action="store_true",
+        help="Deprecated compatibility flag. Plot outputs are skipped by default unless --write-plots is passed.",
+    )
     parser.add_argument("--skip-install", action="store_true", help="Build bundle but do not copy it to Openplanet storage.")
     parser.add_argument("--recursive-replays", action="store_true", help="Include replay files from nested directories.")
     parser.add_argument("--allow-missing-mine", action="store_true", help="Allow building a center-only bundle if mine replay is missing.")
@@ -114,8 +123,11 @@ def main() -> None:
         help="Do not remove existing plot files from the selected map output folder before analysis.",
     )
     args = parser.parse_args()
+    if args.write_plots and args.skip_plots:
+        raise ValueError("--write-plots and --skip-plots cannot be used together.")
     if args.force:
         args.force_download_ghosts = True
+    write_plots = args.write_plots and not args.skip_plots
 
     map_storage_key = _map_storage_key(args.map_uid, args.map_name)
     replay_input_dir = args.replay_input_dir or _default_replay_input_dir(args.map_name)
@@ -126,7 +138,7 @@ def main() -> None:
     bundle_path = PROCESSED_DIR / args.map_name / bundle_name
     plot_output_dir = PLOTS_DIR / args.map_name
     cache_manifest_path = _cache_manifest_path(map_storage_key, args.rank_range)
-    cache_enabled = not args.disable_cache and not args.skip_extract
+    cache_enabled = not args.disable_cache and not args.skip_extract and not write_plots
     cache_skipped_build = False
     analysis_samples: int | None = resolve_analysis_sample_count(args, trajectory_source_dir, required=False)
     cache_settings = build_cache_settings(args, analysis_samples)
@@ -236,7 +248,7 @@ def main() -> None:
     analysis_samples = resolve_analysis_sample_count(args, trajectory_source_dir, required=True)
     cache_settings = build_cache_settings(args, analysis_samples)
 
-    if not args.skip_plots and not args.keep_old_plots:
+    if write_plots and not args.keep_old_plots:
         clean_plot_dir(plot_output_dir)
 
     analyze_cmd = [
@@ -251,7 +263,7 @@ def main() -> None:
         "--samples",
         str(analysis_samples),
     ]
-    if args.skip_plots:
+    if not write_plots:
         analyze_cmd.append("--skip-plots")
     if not args.allow_missing_mine:
         analyze_cmd.append("--require-mine")

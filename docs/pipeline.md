@@ -173,7 +173,7 @@ When a separate mine replay is included, `pipeline.py` creates a temporary combi
 
 Replay extraction scans only the selected replay directory by default. Nested map folders such as `data/raw/replays/1` or `data/raw/replays/9` are not scanned when the selected input directory is `data/raw/replays`. Use `--recursive-replays` on `pipeline.py` or `--recursive` on `extract.ps1` only when nested scanning is explicitly wanted.
 
-Before extraction, `pipeline.py` removes old trajectory JSON files from `data/raw/trajectories/<map>/` unless `--keep-old-trajectories` is passed. Before analysis, it also removes old generated plot files from `output/plots/<map>/` unless `--keep-old-plots` is passed. This prevents stale data from older maps from being mixed into a new bundle.
+Before extraction, `pipeline.py` removes old trajectory JSON files from `data/raw/trajectories/<map>/` unless `--keep-old-trajectories` is passed. Plot files are not generated in the normal pipeline flow. Pass `--write-plots` for developer/debug plots; when plots are enabled, old plot files from `output/plots/<map>/` are removed unless `--keep-old-plots` is passed.
 
 ## Planned automation
 
@@ -182,7 +182,8 @@ The first automation stage is implemented:
 - `pipeline.py` is the unified entry point
 - map, player identity, replay input directory, bundle filename, and rank range are CLI parameters
 - bundle installation is automatic unless `--skip-install` is passed
-- stale trajectory and plot outputs are cleaned automatically unless `--keep-old-trajectories` or `--keep-old-plots` is passed
+- stale trajectory outputs are cleaned automatically unless `--keep-old-trajectories` is passed
+- plot generation is disabled by default; `--write-plots` enables developer/debug plot outputs
 - pipeline analysis requires the mine trajectory by default; use `--allow-missing-mine` only for center-only bundles
 - the C# extractor searches all `EntList` entries and uses the best vehicle sample stream, which handles replay files where trajectory samples are not in `EntList[0]`
 
@@ -192,6 +193,7 @@ The Openplanet command handoff stage is implemented:
 - the generated command includes current map, current display nickname, selected rank range, and replay input directory
 - the UI can copy the command to the clipboard
 - the command still runs in an external terminal; Openplanet does not execute the pipeline
+- the dev Pipeline block can add `--write-plots`; compact user commands do not generate plots
 - rank range fields are clamped to rank values of at least `1` and a maximum span of `20`
 - no upper leaderboard limit is enforced yet; this should later come from leaderboard metadata
 

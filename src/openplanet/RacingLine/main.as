@@ -39,6 +39,7 @@ int g_PipelineRangeFrom = PipelineDefaultRangeFrom;
 int g_PipelineRangeTo = PipelineDefaultRangeTo;
 bool g_PipelineAutoSamples = PipelineAutoSamples;
 int g_PipelineManualSamples = PipelineManualSamples;
+bool g_PipelineWritePlots = false;
 string g_PipelineReplayInputDir = "";
 bool g_PipelineIncludeMineReplay = true;
 string g_PipelineCommand = "";
@@ -433,6 +434,9 @@ string BuildPipelineCommand(bool force) {
     } else {
         command += " --sample-mode manual";
         command += " --samples " + g_PipelineManualSamples;
+    }
+    if (g_PipelineWritePlots) {
+        command += " --write-plots";
     }
 
     if (g_PipelineProjectRoot.Trim().Length > 0) {

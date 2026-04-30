@@ -797,6 +797,16 @@ Graph behavior:
 - plots are useful for developer inspection when running the process manually
 - keep plots behind an explicit dev/debug option
 
+Current implementation:
+
+- `pipeline.py` skips plot generation by default
+- `pipeline.py --write-plots` enables developer/debug plot output
+- the legacy `--skip-plots` flag is still accepted, but it is no longer needed because plots are disabled by default
+- when `--write-plots` is used, pipeline cache is bypassed so plots are actually regenerated
+- `trajectory.py` imports plotting dependencies only when plot output is requested
+- the Openplanet compact user UI generates no-plot commands
+- the Openplanet dev Pipeline block exposes a `Write debug plots` checkbox
+
 ### Stage 3 - Normalize local folders
 
 New generated inputs should move toward `map_uid`-based paths:

@@ -15,16 +15,6 @@ from .io_utils import (
     save_problem_zones_json,
 )
 from .paths import DEFAULT_HIGHLIGHT_NICKNAME, DEFAULT_SOURCE_DIR, RAW_TRAJECTORIES_DIR
-from .plotting import (
-    plot_center_speed,
-    plot_deviation,
-    plot_importance,
-    plot_overlay_with_center,
-    plot_problem_zone_zoom,
-    plot_single_trajectory,
-    plot_speed_delta,
-    plot_spread,
-)
 
 
 def main() -> None:
@@ -132,6 +122,17 @@ def validate_expected_map_prefix(source_dir: Path, expected_map_prefix: str) -> 
 
 
 def write_plot_outputs(result) -> None:
+    from .plotting import (
+        plot_center_speed,
+        plot_deviation,
+        plot_importance,
+        plot_overlay_with_center,
+        plot_problem_zone_zoom,
+        plot_single_trajectory,
+        plot_speed_delta,
+        plot_spread,
+    )
+
     output_dir = resolve_plot_output_dir(result.source_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 

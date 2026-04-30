@@ -44,7 +44,7 @@ Each raw point is expected to contain:
 
 ### Plots
 
-Written to `output/plots/<map-name>/`
+Written to `output/plots/<map-name>/` only when plot output is requested.
 
 Examples:
 
@@ -82,6 +82,9 @@ The analyzer defaults to `TRAIANUSssS` for both highlighted mine trajectory dete
 
 - `--expected-map-prefix`, so stale trajectory JSON from another map fails fast
 - `--require-mine`, so an incomplete center-only bundle is not installed by accident
+- `--skip-plots`, because the normal producer pipeline does not generate debug plots
+
+For manual developer inspection, run `pipeline.py --write-plots` or omit `--skip-plots` when calling `trajectory.py` directly.
 
 The exclusion can be overridden with:
 

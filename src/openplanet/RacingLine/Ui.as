@@ -183,6 +183,7 @@ void RenderPipelineSection() {
     bool previousIncludeMineReplay = g_PipelineIncludeMineReplay;
     bool previousAutoSamples = g_PipelineAutoSamples;
     int previousManualSamples = g_PipelineManualSamples;
+    bool previousWritePlots = g_PipelineWritePlots;
 
     g_PipelineProjectRoot = UI::InputText("Project root", g_PipelineProjectRoot);
     g_PipelineRangeFrom = UI::InputInt("Rank from", g_PipelineRangeFrom);
@@ -193,11 +194,12 @@ void RenderPipelineSection() {
     } else {
         g_PipelineManualSamples = UI::SliderInt("Sample points", g_PipelineManualSamples, 50, 3000);
     }
+    g_PipelineWritePlots = UI::Checkbox("Write debug plots", g_PipelineWritePlots);
     g_PipelineReplayInputDir = UI::InputText("Replay dir", g_PipelineReplayInputDir);
     g_PipelineIncludeMineReplay = UI::Checkbox("Use mine replay", g_PipelineIncludeMineReplay);
     NormalizePipelineRange();
 
-    if (previousRoot != g_PipelineProjectRoot || previousRangeFrom != g_PipelineRangeFrom || previousRangeTo != g_PipelineRangeTo || previousReplayDir != g_PipelineReplayInputDir || previousIncludeMineReplay != g_PipelineIncludeMineReplay || previousAutoSamples != g_PipelineAutoSamples || previousManualSamples != g_PipelineManualSamples) {
+    if (previousRoot != g_PipelineProjectRoot || previousRangeFrom != g_PipelineRangeFrom || previousRangeTo != g_PipelineRangeTo || previousReplayDir != g_PipelineReplayInputDir || previousIncludeMineReplay != g_PipelineIncludeMineReplay || previousAutoSamples != g_PipelineAutoSamples || previousManualSamples != g_PipelineManualSamples || previousWritePlots != g_PipelineWritePlots) {
         UpdatePipelineCommand();
         g_PipelineCopyStatus = "";
     }
