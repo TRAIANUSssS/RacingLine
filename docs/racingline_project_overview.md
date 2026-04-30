@@ -428,12 +428,13 @@ Current implementation:
 - the plugin can copy the generated command to the clipboard
 - the plugin does not execute external processes
 - the plugin can download the current player's mine replay into plugin storage through NadeoServices
+- MVP v3 Stage 4 extends this with leaderboard record downloads into plugin storage
 
 ### Stage 5 - Replay preparation handoff
 
-Current lightweight implementation:
+Historical lightweight implementation:
 
-- the Openplanet UI can download only the current player's mine replay
+- the Openplanet UI could download only the current player's mine replay
 - leaderboard replay/ghost files are expected to already exist in the selected replay input folder or be downloaded by `pipeline.py --download-ghosts`
 - the generated command points `pipeline.py` at that folder
 
@@ -444,6 +445,8 @@ data/raw/replays/<map>/
 Goal:
 
 - reduce manual command construction before full replay download automation exists
+
+This has been superseded by MVP v3 Stage 4 for new work: the plugin can now download leaderboard record replays for the selected rank range into `PluginStorage/RacingLine/downloads/<map_uid>/top_<range>/`.
 
 Future extension note:
 
@@ -848,11 +851,33 @@ First useful MVP v3 milestone:
 
 This stage should preserve the current working data processing path and change only the input preparation and orchestration around it.
 
+Current implementation:
+
+- `DownloadManager.as` implements a first Openplanet-side download POC
+- the plugin fetches world leaderboard entries from the Nadeo Live leaderboard endpoint for `Personal_Best`
+- the plugin resolves `map_uid` to `map_id` through the Core map info endpoint
+- the plugin resolves record/replay URLs through Core `v2/mapRecords/by-account`
+- downloaded files are written to:
+
+```text
+PluginStorage/RacingLine/downloads/<map_uid>/top_<from>_<to>/
+```
+
+- files are named as `.Replay.Gbx` because the Core record endpoint returns replay URLs
+- existing files are skipped by default and can be overwritten with `Force download`
+- the same download action also downloads or reuses the current player's mine replay in `PluginStorage/RacingLine/tmp/<map_uid>/mine.Replay.Gbx`
+- after the combined download action, `--include-mine-replay --mine-replay-path ...` is enabled in the generated pipeline command
+- `manifest.json` is written next to the downloaded files, including successes, skipped files, and per-entry errors
+- after download, the generated pipeline command points `--replay-input-dir` directly at the PluginStorage download folder
+- the plugin still does not execute the external pipeline
+- the C# extractor merges dense vehicle streams from `RecordData.EntList`, so replay/ghost files that store the start and later route segments in separate streams still export a full trajectory from `t=0`
+
 Open question:
 
 - Openplanet currently does not execute external processes
 - if that remains true, this stage may still generate/copy a command after preparing the ghost folder
 - if a safe local helper or external process trigger is introduced, the UI can become a true one-button local generation flow
+- if the C# extractor cannot parse Core-downloaded `.Replay.Gbx` files for some records, the follow-up is either extractor support or switching the download source for those entries
 
 ### Stage 5 - Download and unpack on the plugin side
 

@@ -63,6 +63,7 @@ void RenderUserWindowContent() {
     UI::Separator();
     UI::Text("Generate new bundle");
     RenderUserRankControls();
+    RenderLeaderboardDownloadSection(false);
 
     if (UI::Button("Generate")) {
         UpdatePipelineCommand();
@@ -221,6 +222,9 @@ void RenderPipelineSection() {
         UI::TextWrapped(g_MineReplayDownloadStatus);
     }
 
+    UI::Separator();
+    RenderLeaderboardDownloadSection(true);
+
     if (UI::Button("Generate command")) {
         UpdatePipelineCommand();
         RefreshBundleFiles();
@@ -236,6 +240,33 @@ void RenderPipelineSection() {
     UI::TextWrapped(g_PipelineCommand);
     if (g_PipelineCopyStatus.Length > 0) {
         UI::Text(g_PipelineCopyStatus);
+    }
+}
+
+void RenderLeaderboardDownloadSection(bool devMode) {
+    NormalizePipelineRange();
+
+    UI::Text("Leaderboard records + mine replay");
+    string destination = g_LeaderboardDownloadFolder.Length > 0
+        ? g_LeaderboardDownloadFolder
+        : BuildCurrentLeaderboardDownloadStoragePath();
+    UI::TextWrapped("Destination: " + destination);
+
+    if (UI::Button(g_LeaderboardDownloadRunning ? "Downloading records" : "Download records")) {
+        StartLeaderboardDownload(false);
+    }
+    UI::SameLine();
+    if (UI::Button("Force download")) {
+        StartLeaderboardDownload(true);
+    }
+
+    if (g_LeaderboardDownloadStatus.Length > 0) {
+        UI::TextWrapped(g_LeaderboardDownloadStatus);
+    }
+    UI::Text("Downloaded: " + g_LeaderboardDownloadedCount + "  Skipped: " + g_LeaderboardSkippedCount + "  Failed: " + g_LeaderboardFailedCount);
+
+    if (devMode) {
+        UI::Text("Total entries: " + g_LeaderboardTotalCount);
     }
 }
 

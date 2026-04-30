@@ -163,6 +163,16 @@ By default, `--include-mine-replay` reads:
 C:\Users\<user>\OpenplanetNext\PluginStorage\RacingLine\tmp\<map_uid>\mine.Replay.Gbx
 ```
 
+The Stage 4 leaderboard download action in Openplanet also downloads or reuses this mine replay automatically, so the separate mine replay button is only a manual fallback.
+
+With leaderboard records downloaded by the Openplanet plugin, the generated command points directly at:
+
+```text
+C:\Users\<user>\OpenplanetNext\PluginStorage\RacingLine\downloads\<map_uid>\top_<range>\
+```
+
+These files are currently downloaded from Nadeo Core record replay URLs and saved as `.Replay.Gbx`. The C# extractor should be run against this folder through `--replay-input-dir`; if a downloaded replay format is not accepted by the extractor, keep the manifest error/output for follow-up debugging.
+
 The path can be overridden with:
 
 ```powershell
@@ -187,7 +197,7 @@ The first automation stage is implemented:
 - stale trajectory outputs are cleaned automatically unless `--keep-old-trajectories` is passed
 - plot generation is disabled by default; `--write-plots` enables developer/debug plot outputs
 - pipeline analysis requires the mine trajectory by default; use `--allow-missing-mine` only for center-only bundles
-- the C# extractor searches all `EntList` entries and uses the best vehicle sample stream, which handles replay files where trajectory samples are not in `EntList[0]`
+- the C# extractor searches all `EntList` entries, keeps dense vehicle sample streams, and merges non-overlapping time segments; this handles replay/ghost files where the start and later parts of a run are stored in separate streams
 
 The Openplanet command handoff stage is implemented:
 

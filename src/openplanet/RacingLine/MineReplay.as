@@ -14,61 +14,67 @@ void DownloadMineReplayCoroutine() {
     g_MineReplayPath = BuildMineReplayStoragePath();
 
     try {
-        if (!WaitForNadeoCoreAuth()) {
-            g_MineReplayDownloadStatus = "NadeoServices authentication timed out.";
-            g_MineReplayDownloadRunning = false;
-            return;
-        }
-
-        string accountId = NadeoServices::GetAccountID();
-        string mapUid = GetCurrentMapUid();
-        if (accountId.Length == 0) {
-            g_MineReplayDownloadStatus = "Current account id is not available.";
-            g_MineReplayDownloadRunning = false;
-            return;
-        }
-        if (mapUid.Length == 0) {
-            g_MineReplayDownloadStatus = "Current map uid is not available.";
-            g_MineReplayDownloadRunning = false;
-            return;
-        }
-
-        g_MineReplayDownloadStatus = "Resolving map id.";
-        string mapId = FetchMapId(mapUid);
-        if (mapId.Length == 0) {
-            g_MineReplayDownloadStatus = "Map id was not found for current map uid.";
-            g_MineReplayDownloadRunning = false;
-            return;
-        }
-
-        g_MineReplayDownloadStatus = "Resolving mine replay URL.";
-        string replayUrl = FetchMineReplayUrl(accountId, mapId);
-        if (replayUrl.Length == 0) {
-            g_MineReplayDownloadStatus = "Mine personal best record was not found for this map.";
-            g_MineReplayDownloadRunning = false;
-            return;
-        }
-
-        string replayPath = BuildMineReplayStoragePath();
-        IO::CreateFolder(BuildMineReplayStorageFolderPath(), true);
-
-        g_MineReplayDownloadStatus = "Downloading mine replay.";
-        Net::HttpRequest@ replayRequest = NadeoServices::Get(NadeoCoreAudience, replayUrl);
-        await(replayRequest.StartToFile(replayPath));
-        if (!RequestSucceeded(replayRequest)) {
-            g_MineReplayDownloadStatus = "Mine replay download failed: HTTP " + replayRequest.ResponseCode() + " " + replayRequest.Error();
-            g_MineReplayDownloadRunning = false;
-            return;
-        }
-
-        g_MineReplayPath = replayPath;
-        WriteMineReplayManifest(accountId, mapUid, mapId, replayUrl, replayPath);
-        g_MineReplayDownloadStatus = "Saved: " + replayPath;
+        DownloadMineReplayNow(true, false);
     } catch {
         g_MineReplayDownloadStatus = "Mine replay download failed.";
     }
 
     g_MineReplayDownloadRunning = false;
+}
+
+bool DownloadMineReplayNow(bool force, bool reuseExisting) {
+    g_MineReplayPath = BuildMineReplayStoragePath();
+
+    if (reuseExisting && !force && IO::FileExists(g_MineReplayPath)) {
+        g_MineReplayDownloadStatus = "Mine replay already exists: " + g_MineReplayPath;
+        return true;
+    }
+
+    if (!WaitForNadeoCoreAuth()) {
+        g_MineReplayDownloadStatus = "NadeoServices authentication timed out.";
+        return false;
+    }
+
+    string accountId = NadeoServices::GetAccountID();
+    string mapUid = GetCurrentMapUid();
+    if (accountId.Length == 0) {
+        g_MineReplayDownloadStatus = "Current account id is not available.";
+        return false;
+    }
+    if (mapUid.Length == 0) {
+        g_MineReplayDownloadStatus = "Current map uid is not available.";
+        return false;
+    }
+
+    g_MineReplayDownloadStatus = "Resolving map id.";
+    string mapId = ResolveCachedMapId(mapUid);
+    if (mapId.Length == 0) {
+        g_MineReplayDownloadStatus = "Map id was not found for current map uid.";
+        return false;
+    }
+
+    g_MineReplayDownloadStatus = "Resolving mine replay URL.";
+    string replayUrl = FetchMineReplayUrl(accountId, mapId);
+    if (replayUrl.Length == 0) {
+        g_MineReplayDownloadStatus = "Mine personal best record was not found for this map.";
+        return false;
+    }
+
+    string replayPath = BuildMineReplayStoragePath();
+    IO::CreateFolder(BuildMineReplayStorageFolderPath(), true);
+
+    g_MineReplayDownloadStatus = "Downloading mine replay.";
+    Net::HttpRequest@ replayRequest = NadeoServices::Get(NadeoCoreAudience, replayUrl);
+    await(replayRequest.StartToFile(replayPath));
+    if (!RequestSucceeded(replayRequest)) {
+        g_MineReplayDownloadStatus = "Mine replay download failed: HTTP " + replayRequest.ResponseCode() + " " + replayRequest.Error();
+        return false;
+    }
+
+    g_MineReplayPath = replayPath;
+    WriteMineReplayManifest(accountId, mapUid, mapId, replayUrl, replayPath);
+    g_MineReplayDownloadStatus = "Saved: " + replayPath;
+    return true;
 }
 
 bool WaitForNadeoCoreAuth() {

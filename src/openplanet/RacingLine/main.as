@@ -51,6 +51,7 @@ string g_MineReplayPath = "";
 
 void Main() {
     NadeoServices::AddAudience(NadeoCoreAudience);
+    NadeoServices::AddAudience(NadeoLiveAudience);
     UpdateCurrentMap(true);
 }
 
@@ -102,6 +103,12 @@ void UpdateCurrentMap(bool force) {
     g_PipelineReplayInputDirAuto = true;
     g_PipelineReplayInputDir = BuildDefaultReplayInputDir(mapName, mapUid);
     g_MineReplayPath = BuildMineReplayStoragePath();
+    g_LeaderboardDownloadFolder = BuildCurrentLeaderboardDownloadStoragePath();
+    g_LeaderboardDownloadStatus = "Idle.";
+    g_LeaderboardDownloadedCount = 0;
+    g_LeaderboardSkippedCount = 0;
+    g_LeaderboardFailedCount = 0;
+    g_LeaderboardTotalCount = 0;
     UpdatePipelineCommand();
     RefreshBundleFiles();
     ReloadBundle();

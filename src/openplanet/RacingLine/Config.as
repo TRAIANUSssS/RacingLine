@@ -1,5 +1,6 @@
 string BundleRootDirectory = "bundles";
 string MineReplayTmpDirectory = "tmp";
+string LeaderboardDownloadDirectory = "downloads";
 string DefaultBundleFileName = "top_1000_1010.analysis_bundle.json";
 string PipelineProjectRoot = "E:/Projects/RacingLine";
 int PipelineDefaultRangeFrom = 1000;

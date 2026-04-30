@@ -227,7 +227,7 @@ static ExportResult ExtractReplayData(string inputPath)
 static List<TrajectoryPoint> ExtractBestTrajectoryPoints(
     IReadOnlyList<CPlugEntRecordData.EntRecordListElem> entList)
 {
-    var bestPoints = new List<TrajectoryPoint>();
+    var vehicleStreams = new List<List<TrajectoryPoint>>();
 
     foreach (var entRecord in entList)
     {
@@ -238,13 +238,69 @@ static List<TrajectoryPoint> ExtractBestTrajectoryPoints(
         }
 
         var points = ExtractTrajectoryPoints(samples);
-        if (points.Count > bestPoints.Count)
+        if (points.Count > 0)
         {
-            bestPoints = points;
+            vehicleStreams.Add(points);
         }
     }
 
-    return bestPoints;
+    var denseStreams = vehicleStreams
+        .Where(IsDenseTrajectoryStream)
+        .ToList();
+
+    return MergeTrajectoryStreams(denseStreams.Count > 0 ? denseStreams : vehicleStreams);
+}
+
+static List<TrajectoryPoint> MergeTrajectoryStreams(IReadOnlyList<List<TrajectoryPoint>> streams)
+{
+    if (streams.Count == 0)
+    {
+        return new List<TrajectoryPoint>();
+    }
+
+    if (streams.Count == 1)
+    {
+        return streams[0]
+            .OrderBy(point => point.t)
+            .ToList();
+    }
+
+    var merged = new List<TrajectoryPoint>(streams.Sum(stream => stream.Count));
+    var orderedStreams = streams
+        .Where(stream => stream.Count > 0)
+        .OrderBy(stream => stream.Min(point => point.t))
+        .ThenByDescending(stream => stream.Count);
+
+    var lastTime = double.NegativeInfinity;
+    foreach (var stream in orderedStreams)
+    {
+        foreach (var point in stream.OrderBy(point => point.t))
+        {
+            if (point.t <= lastTime)
+            {
+                continue;
+            }
+
+            merged.Add(point);
+            lastTime = point.t;
+        }
+    }
+
+    return merged;
+}
+
+static bool IsDenseTrajectoryStream(IReadOnlyList<TrajectoryPoint> stream)
+{
+    if (stream.Count < 20)
+    {
+        return false;
+    }
+
+    var startTime = stream.Min(point => point.t);
+    var endTime = stream.Max(point => point.t);
+    var durationSeconds = Math.Max((endTime - startTime) / 1000.0, 0.001);
+    var samplesPerSecond = stream.Count / durationSeconds;
+    return samplesPerSecond >= 8.0;
 }
 
 static List<TrajectoryPoint> ExtractTrajectoryPoints(IReadOnlyList<CPlugEntRecordData.EntRecordDelta> samples)

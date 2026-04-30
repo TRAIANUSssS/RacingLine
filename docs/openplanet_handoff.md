@@ -32,6 +32,7 @@ It should not:
 - current map detection is implemented from `GetApp().RootMap.MapName`
 - current map UID detection is implemented from `GetApp().RootMap.MapInfo.MapUid`
 - current mine replay download is implemented through the `NadeoServices` dependency
+- leaderboard record download is implemented through `NadeoServices` Live/Core APIs as a Stage 4 POC
 - pipeline command generation is implemented in the UI
 - `Show Center`, `Show Mine`, and `Show Problem Zones` toggles are implemented
 - `Show Other Runs` is implemented for bundles that include `runs[].line`
@@ -78,6 +79,7 @@ The current viewer can:
 - generate and copy a PowerShell command for `pipeline.py`
 - choose automatic or manual analysis sample count in the generated command
 - download the current player's personal-best replay for the current map into plugin storage
+- download leaderboard record replay files for the selected rank range into plugin storage
 - look for bundles in the detected map UID folder, with a legacy map-name folder fallback
 - select available `.analysis_bundle.json` files from a combo box
 - show whether loading succeeded
@@ -134,6 +136,7 @@ The `Pipeline` block includes:
 - copy button for the generated command
 - automatic replay input directory targeting `data/raw/ghosts/<map_uid>/top_<range>/`
 - an `Auto replay dir` toggle for manually overriding the input directory in dev mode
+- leaderboard record download controls and status
 
 The `Data` block lists installed bundles for the current map as compact rank ranges such as `100-110` and `1000-1020`, sorted by numeric range start/end. The underlying files remain named `top_<range>.analysis_bundle.json`. The list refreshes automatically while the UI is open and can still be refreshed manually.
 
@@ -144,6 +147,14 @@ Mine replay storage:
 ```text
 OpenplanetNext/PluginStorage/RacingLine/tmp/<map_uid>/mine.Replay.Gbx
 ```
+
+Leaderboard record download storage:
+
+```text
+OpenplanetNext/PluginStorage/RacingLine/downloads/<map_uid>/top_<range>/
+```
+
+The plugin downloads Core record replay URLs as `.Replay.Gbx` files and writes a `manifest.json` with source metadata, local paths, download/cache status, and errors. The same action also downloads or reuses the current player's mine replay in `tmp/<map_uid>/mine.Replay.Gbx`. After a successful download, the generated pipeline command points `--replay-input-dir` at this PluginStorage download folder and includes the mine replay flags.
 
 The plugin resolves the current map UID, translates it to a Nadeo map ID, fetches the current account's personal-best record, and downloads the record replay URL via `NadeoServices`.
 
@@ -192,8 +203,10 @@ Current Openplanet integration is intentionally lightweight:
 - the generated command uses the display nickname for `--mine`, not the account login/id
 - the plugin generates a terminal command for `pipeline.py`
 - the plugin can copy that command to the clipboard
+- the plugin can download leaderboard record replay files into `PluginStorage/RacingLine/downloads/<map_uid>/top_<range>/`
+- the same leaderboard download action also downloads or reuses the current player's mine replay
 
-The plugin does not execute external processes. It can download only the current player's mine replay into plugin storage; leaderboard ghost downloading still happens in the external Python pipeline.
+The plugin does not execute external processes. Extraction, analysis, bundle building, and bundle installation still happen through the external `pipeline.py` command copied from the UI.
 
 ## Current constraint
 
