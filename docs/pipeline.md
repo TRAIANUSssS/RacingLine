@@ -11,7 +11,7 @@ RacingLine currently works as an offline-first pipeline with an Openplanet in-ga
 5. Inspect plots in `output/plots/<map-name>/`
 6. Inspect processed data in `data/processed/<map-name>/analysis_data.json`
 7. Build a named `.analysis_bundle.json` bundle
-8. Install that bundle into Openplanet plugin storage under `bundles/<map>/`
+8. Install that bundle into Openplanet plugin storage under `bundles/<map_uid>/` for new bundles
 9. Load that bundle from the Openplanet UI
 10. Render `center_line`, `mine_line`, and `problem_zones` in-game through the Openplanet viewer
 
@@ -124,7 +124,7 @@ python .\pipeline.py --map "Spring 2026 - 02" --mine "TRAIANUSssS" --range "1000
 This runs extraction, analysis, bundle building, and bundle installation. The installed bundle follows this naming convention:
 
 ```text
-C:\Users\<user>\OpenplanetNext\PluginStorage\RacingLine\bundles\Spring 2026 - 02\top_1000_1010.analysis_bundle.json
+C:\Users\<user>\OpenplanetNext\PluginStorage\RacingLine\bundles\<map_uid>\top_1000_1010.analysis_bundle.json
 ```
 
 Individual stages can still be run directly:
@@ -146,7 +146,7 @@ python .\pipeline.py --map "Spring 2026 - 02" --mine "TRAIANUSssS" --range "1000
 This downloads ghosts into:
 
 ```text
-data/raw/ghosts/Spring 2026 - 02/top_1000_1010/
+data/raw/ghosts/2pYyYky9ccXdTBaaLncWOjFc6jf/top_1000_1010/
 ```
 
 and then runs extraction from that folder.
@@ -160,7 +160,7 @@ python .\pipeline.py --map "Spring 2026 - 02" --mine "TRAIANUSssS" --range "1000
 By default, `--include-mine-replay` reads:
 
 ```text
-C:\Users\<user>\OpenplanetNext\PluginStorage\RacingLine\tmp\<map>\mine.Replay.Gbx
+C:\Users\<user>\OpenplanetNext\PluginStorage\RacingLine\tmp\<map_uid>\mine.Replay.Gbx
 ```
 
 The path can be overridden with:
@@ -169,7 +169,9 @@ The path can be overridden with:
 --mine-replay-path "C:\path\to\mine.Replay.Gbx"
 ```
 
-When a separate mine replay is included, `pipeline.py` creates a temporary combined input folder in `data/temp/pipeline_inputs/<map>/top_<range>/`, copies the leaderboard ghosts and mine replay there, and extracts from that combined folder. The copied mine replay is renamed with the `--mine` value so the analyzer can find `mine_line`.
+When a separate mine replay is included, `pipeline.py` creates a temporary combined input folder in `data/temp/pipeline_inputs/<map_uid>/top_<range>/`, copies the leaderboard ghosts and mine replay there, and extracts from that combined folder. The copied mine replay is renamed with the `--mine` value so the analyzer can find `mine_line`.
+
+If `--replay-input-dir` is not provided, `pipeline.py` first looks for the normalized ghost folder `data/raw/ghosts/<map_uid>/top_<range>/` when `--map-uid` is available. It falls back to the legacy replay folder behavior after that.
 
 Replay extraction scans only the selected replay directory by default. Nested map folders such as `data/raw/replays/1` or `data/raw/replays/9` are not scanned when the selected input directory is `data/raw/replays`. Use `--recursive-replays` on `pipeline.py` or `--recursive` on `extract.ps1` only when nested scanning is explicitly wanted.
 

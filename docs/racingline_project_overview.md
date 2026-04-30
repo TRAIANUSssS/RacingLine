@@ -36,7 +36,7 @@ Input:
 
 - Trackmania `.Replay.Gbx` files from `data/raw/replays`
 - Trackmania `.Ghost.Gbx` files from `data/raw/ghosts`
-- or a selected input subfolder such as `data/raw/replays/2` or `data/raw/ghosts/<map>/top_1000_1010`
+- or a selected input subfolder such as `data/raw/replays/2` or `data/raw/ghosts/<map_uid>/top_1000_1010`
 
 Output:
 
@@ -115,14 +115,14 @@ Current status:
 
 - a working plugin exists in `src/openplanet/RacingLine`
 - the plugin depends on `Camera` and `NadeoServices`
-- the plugin detects the current map and loads bundles from `PluginStorage/RacingLine/bundles/<map>/`
+- the plugin detects the current map and loads new bundles from `PluginStorage/RacingLine/bundles/<map_uid>/`
 - the default bundle filename is currently `top_1000_1010.analysis_bundle.json`
 - the UI shows load status, error text, map info, mine run name, counts, toggles, and render debug counters
 - the UI shows the current Openplanet user name/login for future automatic player matching
 - the UI shows available bundle files for the current map folder as a combo box
 - the UI block order is `Status`, `Data`, `Pipeline`, `Toggles`, `Info`
 - the UI generates and copies a terminal command for `pipeline.py`
-- the UI can download the current player's personal-best replay for the current map into `PluginStorage/RacingLine/tmp/<map>/mine.Replay.Gbx`
+- the UI can download the current player's personal-best replay for the current map into `PluginStorage/RacingLine/tmp/<map_uid>/mine.Replay.Gbx`
 - the generated pipeline command can include that mine replay through `--include-mine-replay --mine-replay-path`
 - the UI exposes runtime render controls for center line width, mine line width, problem zone marker size, and visible problem zone count
 - `center_line` world rendering is implemented
@@ -278,7 +278,7 @@ The current implemented MVP is:
 1. extract replay data offline
 2. analyze runs offline
 3. build one stable `.analysis_bundle.json` bundle
-4. install that bundle into `PluginStorage/RacingLine/bundles/<map>/`
+4. install that bundle into `PluginStorage/RacingLine/bundles/<map_uid>/` for new bundles
 5. load that bundle in Openplanet based on the current map
 6. confirm bundle loading and metadata in UI
 7. render center line in game
@@ -329,7 +329,7 @@ This script should:
 1. run replay extraction (C#)
 2. run trajectory analysis (Python)
 3. build a named `.analysis_bundle.json` bundle
-4. copy the bundle into `PluginStorage/RacingLine/bundles/<map>/`
+4. copy the bundle into `PluginStorage/RacingLine/bundles/<map_uid>/` for new bundles
 
 Goal:
 
@@ -381,7 +381,7 @@ After building the bundle, the pipeline should:
 - follow naming convention:
 
 ```text
-bundles/<map>/top_<range>.analysis_bundle.json
+bundles/<map_uid>/top_<range>.analysis_bundle.json
 ```
 
 Goal:
@@ -460,12 +460,12 @@ Current implementation:
 - ranges above rank `10000` are rejected because the Trackmania.io flow used here exposes only the first 10000 ranks
 - `pipeline.py --download-ghosts` runs the downloader before extraction and then extracts directly from the downloaded `.Ghost.Gbx` files
 - `pipeline.py --include-mine-replay` adds a separately downloaded mine `.Replay.Gbx` file to the extraction input
-- the Openplanet plugin downloads mine replay files through NadeoServices into `PluginStorage/RacingLine/tmp/<map>/mine.Replay.Gbx`
+- the Openplanet plugin downloads mine replay files through NadeoServices into `PluginStorage/RacingLine/tmp/<map_uid>/mine.Replay.Gbx`
 
 Default storage:
 
 ```text
-data/raw/ghosts/<map>/top_<range>/
+data/raw/ghosts/<map_uid>/top_<range>/
 ```
 
 Goal:
@@ -511,7 +511,7 @@ Ensure OpenPlanet UI:
 Current implementation:
 
 - implemented in the OpenPlanet viewer
-- bundle files are stored per map under `bundles/<map>/`
+- new bundle files are stored per map under `bundles/<map_uid>/`
 - filenames still use `top_<range>.analysis_bundle.json` on disk
 - the UI shows labels such as `100-110` and `1000-1020`
 - the selected bundle can be reloaded after an external pipeline run
@@ -825,6 +825,17 @@ Compatibility note:
 
 - existing `map_name`-based folders can remain supported during migration
 - new code should prefer `map_uid` when it is available
+
+Current implementation:
+
+- downloaded ghosts default to `data/raw/ghosts/<map_uid>/top_<range>/`
+- installed bundles default to `PluginStorage/RacingLine/bundles/<map_uid>/top_<range>.analysis_bundle.json`
+- mine replay storage defaults to `PluginStorage/RacingLine/tmp/<map_uid>/mine.Replay.Gbx`
+- temporary pipeline input and cache folders use the same map storage key
+- when `--replay-input-dir` is omitted, `pipeline.py` first checks the normalized ghost folder for the selected `map_uid` and rank range
+- the Openplanet generated command uses the normalized ghost folder as its automatic replay input directory
+- the Openplanet dev Pipeline block has an `Auto replay dir` toggle; disabling it allows manual legacy replay folders such as `data/raw/replays/6`
+- trajectory and processed analysis folders still use `map_name` because the current extractor/analyzer contract is map-name based
 
 ### Stage 4 - Download all ghosts into one folder, then use the old processor
 

@@ -132,6 +132,8 @@ The `Pipeline` block includes:
 - a `Use mine replay` toggle that appends `--include-mine-replay --mine-replay-path ...` to the generated command
 - generated terminal command
 - copy button for the generated command
+- automatic replay input directory targeting `data/raw/ghosts/<map_uid>/top_<range>/`
+- an `Auto replay dir` toggle for manually overriding the input directory in dev mode
 
 The `Data` block lists installed bundles for the current map as compact rank ranges such as `100-110` and `1000-1020`, sorted by numeric range start/end. The underlying files remain named `top_<range>.analysis_bundle.json`. The list refreshes automatically while the UI is open and can still be refreshed manually.
 

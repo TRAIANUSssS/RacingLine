@@ -33,11 +33,14 @@ def main() -> None:
         "--replay-input-dir",
         type=Path,
         default=None,
-        help="Directory containing .Replay.Gbx or .Ghost.Gbx files. Defaults to data/raw/replays/<map> if it exists.",
+        help=(
+            "Directory containing .Replay.Gbx or .Ghost.Gbx files. "
+            "Defaults to data/raw/ghosts/<map_uid>/top_<range> when available, then legacy replay folders."
+        ),
     )
     parser.add_argument("--download-ghosts", action="store_true", help="Download Trackmania.io ghosts before extraction.")
     parser.add_argument("--leaderboard-id", default=None, help="Trackmania.io leaderboard/campaign id for --download-ghosts.")
-    parser.add_argument("--map-uid", default=None, help="Trackmania map UID for --download-ghosts.")
+    parser.add_argument("--map-uid", default=None, help="Trackmania map UID used for downloads, metadata, and normalized storage paths.")
     parser.add_argument(
         "--ghost-output-root",
         type=Path,
@@ -48,7 +51,7 @@ def main() -> None:
         "--ghost-output-dir",
         type=Path,
         default=None,
-        help="Exact directory for downloaded ghosts. Overrides --ghost-output-root/<map>/top_<range>.",
+        help="Exact directory for downloaded ghosts. Overrides --ghost-output-root/<map_uid>/top_<range>.",
     )
     parser.add_argument("--force-download-ghosts", action="store_true", help="Redownload ghosts that already exist.")
     parser.add_argument(
@@ -130,9 +133,9 @@ def main() -> None:
     write_plots = args.write_plots and not args.skip_plots
 
     map_storage_key = _map_storage_key(args.map_uid, args.map_name)
-    replay_input_dir = args.replay_input_dir or _default_replay_input_dir(args.map_name)
     bundle_name = args.bundle_name or f"top_{_normalize_range(args.rank_range)}.analysis_bundle.json"
     ghost_output_dir = args.ghost_output_dir or args.ghost_output_root / map_storage_key / f"top_{_normalize_range(args.rank_range)}"
+    replay_input_dir = args.replay_input_dir or _default_replay_input_dir(args.map_name, map_storage_key, args.rank_range)
     trajectory_source_dir = args.trajectory_output_root / args.map_name
     analysis_json = PROCESSED_DIR / args.map_name / "analysis_data.json"
     bundle_path = PROCESSED_DIR / args.map_name / bundle_name
@@ -659,7 +662,11 @@ def clean_directory(path: Path) -> None:
         shutil.rmtree(path)
 
 
-def _default_replay_input_dir(map_name: str) -> Path:
+def _default_replay_input_dir(map_name: str, map_storage_key: str, rank_range: str) -> Path:
+    ghost_dir = RAW_GHOSTS_DIR / map_storage_key / f"top_{_normalize_range(rank_range)}"
+    if ghost_dir.exists():
+        return ghost_dir
+
     map_dir = RAW_REPLAYS_DIR / map_name
     return map_dir if map_dir.exists() else RAW_REPLAYS_DIR
 

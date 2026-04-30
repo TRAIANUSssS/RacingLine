@@ -47,7 +47,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Download Trackmania.io leaderboard ghosts for a rank range.")
     parser.add_argument("--leaderboard-id", required=True, help="Trackmania.io leaderboard/campaign id.")
     parser.add_argument("--map-uid", required=True, help="Trackmania map UID.")
-    parser.add_argument("--map", required=True, dest="map_name", help="Map name / output folder name.")
+    parser.add_argument("--map", required=True, dest="map_name", help="Map display name written into manifest metadata.")
     parser.add_argument("--range", required=True, dest="rank_range", help="Inclusive rank range, e.g. 1000-1010.")
     parser.add_argument(
         "--output-root",

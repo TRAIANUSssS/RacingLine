@@ -41,6 +41,7 @@ bool g_PipelineAutoSamples = PipelineAutoSamples;
 int g_PipelineManualSamples = PipelineManualSamples;
 bool g_PipelineWritePlots = false;
 string g_PipelineReplayInputDir = "";
+bool g_PipelineReplayInputDirAuto = true;
 bool g_PipelineIncludeMineReplay = true;
 string g_PipelineCommand = "";
 string g_PipelineCopyStatus = "";
@@ -98,7 +99,8 @@ void UpdateCurrentMap(bool force) {
     g_CurrentMapLegacyFolderName = SanitizePathSegment(mapName);
     g_SelectedBundleFileName = DefaultBundleFileName;
     g_SelectedBundleFolderName = g_CurrentMapFolderName;
-    g_PipelineReplayInputDir = BuildDefaultReplayInputDir(mapName);
+    g_PipelineReplayInputDirAuto = true;
+    g_PipelineReplayInputDir = BuildDefaultReplayInputDir(mapName, mapUid);
     g_MineReplayPath = BuildMineReplayStoragePath();
     UpdatePipelineCommand();
     RefreshBundleFiles();
@@ -471,13 +473,26 @@ void NormalizePipelineRange() {
     if (g_PipelineManualSamples > 3000) {
         g_PipelineManualSamples = 3000;
     }
+    if (g_PipelineReplayInputDirAuto) {
+        g_PipelineReplayInputDir = BuildDefaultReplayInputDir(g_CurrentMapName, g_CurrentMapUid);
+    }
 }
 
 string BuildPipelineRange() {
     return "" + g_PipelineRangeFrom + "-" + g_PipelineRangeTo;
 }
 
-string BuildDefaultReplayInputDir(const string &in mapName) {
+string BuildPipelineRangeFolderName() {
+    return "" + g_PipelineRangeFrom + "_" + g_PipelineRangeTo;
+}
+
+string BuildDefaultReplayInputDir(const string &in mapName, const string &in mapUid) {
+    string folder = BuildMapStorageFolderName(mapUid, mapName);
+    if (folder.Length > 0) {
+        string rangeFolder = "top_" + BuildPipelineRangeFolderName();
+        return ".\\data\\raw\\ghosts\\" + folder + "\\" + rangeFolder;
+    }
+
     string number = ExtractTrailingMapNumber(mapName);
     if (number.Length == 0) {
         return ".\\data\\raw\\replays";

@@ -180,6 +180,7 @@ void RenderPipelineSection() {
     int previousRangeFrom = g_PipelineRangeFrom;
     int previousRangeTo = g_PipelineRangeTo;
     string previousReplayDir = g_PipelineReplayInputDir;
+    bool previousReplayDirAuto = g_PipelineReplayInputDirAuto;
     bool previousIncludeMineReplay = g_PipelineIncludeMineReplay;
     bool previousAutoSamples = g_PipelineAutoSamples;
     int previousManualSamples = g_PipelineManualSamples;
@@ -195,11 +196,19 @@ void RenderPipelineSection() {
         g_PipelineManualSamples = UI::SliderInt("Sample points", g_PipelineManualSamples, 50, 3000);
     }
     g_PipelineWritePlots = UI::Checkbox("Write debug plots", g_PipelineWritePlots);
+    g_PipelineReplayInputDirAuto = UI::Checkbox("Auto replay dir", g_PipelineReplayInputDirAuto);
+    string autoReplayInputDir = BuildDefaultReplayInputDir(g_CurrentMapName, g_CurrentMapUid);
+    if (g_PipelineReplayInputDirAuto) {
+        g_PipelineReplayInputDir = autoReplayInputDir;
+    }
     g_PipelineReplayInputDir = UI::InputText("Replay dir", g_PipelineReplayInputDir);
+    if (g_PipelineReplayInputDirAuto && g_PipelineReplayInputDir != autoReplayInputDir) {
+        g_PipelineReplayInputDirAuto = false;
+    }
     g_PipelineIncludeMineReplay = UI::Checkbox("Use mine replay", g_PipelineIncludeMineReplay);
     NormalizePipelineRange();
 
-    if (previousRoot != g_PipelineProjectRoot || previousRangeFrom != g_PipelineRangeFrom || previousRangeTo != g_PipelineRangeTo || previousReplayDir != g_PipelineReplayInputDir || previousIncludeMineReplay != g_PipelineIncludeMineReplay || previousAutoSamples != g_PipelineAutoSamples || previousManualSamples != g_PipelineManualSamples || previousWritePlots != g_PipelineWritePlots) {
+    if (previousRoot != g_PipelineProjectRoot || previousRangeFrom != g_PipelineRangeFrom || previousRangeTo != g_PipelineRangeTo || previousReplayDir != g_PipelineReplayInputDir || previousReplayDirAuto != g_PipelineReplayInputDirAuto || previousIncludeMineReplay != g_PipelineIncludeMineReplay || previousAutoSamples != g_PipelineAutoSamples || previousManualSamples != g_PipelineManualSamples || previousWritePlots != g_PipelineWritePlots) {
         UpdatePipelineCommand();
         g_PipelineCopyStatus = "";
     }
