@@ -45,7 +45,15 @@ class ProblemZone {
 }
 
 class AnalysisBundle {
+    string mapUid = "";
     string mapName = "";
+    string rankRange = "";
+    int rankFrom = 0;
+    int rankTo = 0;
+    string sampleMode = "";
+    int sampleCount = 0;
+    string createdAt = "";
+    string generator = "";
     string mineRunName = "";
     array<RunInfo@> runs;
     array<CenterPoint@> centerLine;

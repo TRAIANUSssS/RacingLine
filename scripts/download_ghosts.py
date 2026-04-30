@@ -86,7 +86,7 @@ def main() -> None:
     if rank_range.length > args.max_length:
         raise ValueError(f"Requested range has {rank_range.length} ranks, but --max-length is {args.max_length}.")
 
-    output_dir = args.output_dir or args.output_root / sanitize_path_part(args.map_name) / f"top_{rank_range.normalized}"
+    output_dir = args.output_dir or args.output_root / sanitize_path_part(args.map_uid) / f"top_{rank_range.normalized}"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     leaderboard = fetch_leaderboard(args.base_url, args.leaderboard_id, args.map_uid, 0, 1)

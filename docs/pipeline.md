@@ -30,7 +30,7 @@ This layer parses `.Replay.Gbx` and `.Ghost.Gbx` files and exports raw points wi
 
 - Code: `scripts/download_ghosts.py`
 - Reads: Trackmania.io leaderboard metadata and ghost download URLs
-- Writes: `data/raw/ghosts/<map>/top_<range>/`
+- Writes: `data/raw/ghosts/<map_uid>/top_<range>/` for new generated downloads
 
 This layer fetches leaderboard entries from:
 
@@ -76,6 +76,7 @@ Runs matching the excluded center nickname are still exported and can still be u
 This layer stabilizes the contract for Openplanet. The bundle now includes:
 
 - metadata
+- `map.uid` and `map.name`
 - `runs`
 - `center_line` with `x/y/z`
 - `mine_run_name`
@@ -93,8 +94,9 @@ The viewer currently:
 
 - resolves bundle paths relative to Openplanet plugin storage
 - detects the current map name from Openplanet
-- uses `bundles/<map>/top_1000_1010.analysis_bundle.json` as the default bundle path
-- lists available `.analysis_bundle.json` files from the current map folder
+- detects the current map UID from Openplanet
+- uses `bundles/<map_uid>/top_1000_1010.analysis_bundle.json` as the default new bundle path
+- still lists legacy `.analysis_bundle.json` files from `bundles/<map_name>/` when present
 - loads and parses `analysis_bundle.json`
 - exposes a reload button
 - exposes a pipeline command block with map/nickname/rank/replay-dir propagation
@@ -111,7 +113,7 @@ The viewer currently:
 
 Expected storage location for a relative bundle path:
 
-- `OpenplanetNext/PluginStorage/RacingLine/bundles/<map>/top_1000_1010.analysis_bundle.json`
+- `OpenplanetNext/PluginStorage/RacingLine/bundles/<map_uid>/top_1000_1010.analysis_bundle.json`
 
 ## Common commands
 

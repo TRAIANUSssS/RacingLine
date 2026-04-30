@@ -769,6 +769,15 @@ Reasoning:
 - `map_uid` gives the plugin and pipeline a shared durable identifier
 - the same bundle contract should work whether the bundle is created by the current external pipeline or by a future plugin-side implementation
 
+Current implementation:
+
+- `pipeline.py --map-uid` now uses `map_uid` as the preferred storage key for new downloaded ghosts, cache/temp input folders, installed bundles, and default mine replay lookup
+- the pipeline still uses `map_name` for trajectory and processed analysis folders because the current extractor/analyzer path contract is map-name based
+- `bundle_builder.py` writes MVP v3 metadata into both `metadata` and `source`
+- bundles include `map.uid` while keeping `map.name`
+- the Openplanet viewer detects `map_uid`, prefers `bundles/<map_uid>/`, and still lists legacy `bundles/<map_name>/` folders when present
+- generated pipeline commands include `--map-uid` when Openplanet can detect it
+
 ### Stage 2 - Clean local producer workflow
 
 Goal:

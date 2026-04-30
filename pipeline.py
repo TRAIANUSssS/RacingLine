@@ -117,14 +117,15 @@ def main() -> None:
     if args.force:
         args.force_download_ghosts = True
 
+    map_storage_key = _map_storage_key(args.map_uid, args.map_name)
     replay_input_dir = args.replay_input_dir or _default_replay_input_dir(args.map_name)
     bundle_name = args.bundle_name or f"top_{_normalize_range(args.rank_range)}.analysis_bundle.json"
-    ghost_output_dir = args.ghost_output_dir or args.ghost_output_root / _sanitize_path_part(args.map_name) / f"top_{_normalize_range(args.rank_range)}"
+    ghost_output_dir = args.ghost_output_dir or args.ghost_output_root / map_storage_key / f"top_{_normalize_range(args.rank_range)}"
     trajectory_source_dir = args.trajectory_output_root / args.map_name
     analysis_json = PROCESSED_DIR / args.map_name / "analysis_data.json"
     bundle_path = PROCESSED_DIR / args.map_name / bundle_name
     plot_output_dir = PLOTS_DIR / args.map_name
-    cache_manifest_path = _cache_manifest_path(args.map_name, args.rank_range)
+    cache_manifest_path = _cache_manifest_path(map_storage_key, args.rank_range)
     cache_enabled = not args.disable_cache and not args.skip_extract
     cache_skipped_build = False
     analysis_samples: int | None = resolve_analysis_sample_count(args, trajectory_source_dir, required=False)
@@ -156,11 +157,11 @@ def main() -> None:
         replay_input_dir = ghost_output_dir
 
     if args.include_mine_replay:
-        mine_replay_path = args.mine_replay_path or _default_mine_replay_path(args.storage_root, args.map_name)
+        mine_replay_path = args.mine_replay_path or _default_mine_replay_path(args.storage_root, args.map_uid, args.map_name)
         replay_input_dir = prepare_combined_replay_input_dir(
             replay_input_dir=replay_input_dir,
             mine_replay_path=mine_replay_path,
-            map_name=args.map_name,
+            map_storage_key=map_storage_key,
             mine_name=args.mine,
             rank_range=args.rank_range,
             recursive=args.recursive_replays,
@@ -195,7 +196,7 @@ def main() -> None:
                 print("Pipeline cache: inputs unchanged but derived outputs are missing; reusing trajectories and rebuilding analysis/bundle.", flush=True)
                 args.skip_extract = True
             else:
-                extraction_input_dir = prepare_cached_extraction_input_dir(changed_inputs, args.map_name, args.rank_range)
+                extraction_input_dir = prepare_cached_extraction_input_dir(changed_inputs, map_storage_key, args.rank_range)
                 extraction_recursive = False
                 print(
                     f"Pipeline cache: extracting {len(changed_inputs)} changed/new input(s); "
@@ -207,7 +208,7 @@ def main() -> None:
 
     if cache_skipped_build:
         if not args.skip_install:
-            installed_path = install_bundle(bundle_path, args.storage_root, args.map_name, bundle_name)
+            installed_path = install_bundle(bundle_path, args.storage_root, map_storage_key, bundle_name)
             print(f"Installed: {installed_path}")
         return
 
@@ -266,6 +267,17 @@ def main() -> None:
             str(bundle_path),
             "--range",
             args.rank_range,
+            "--sample-mode",
+            args.sample_mode,
+            "--sample-count",
+            str(analysis_samples),
+            "--generator",
+            "pipeline.py",
+            *(
+                ["--map-uid", args.map_uid]
+                if args.map_uid
+                else []
+            ),
         ]
     )
 
@@ -273,6 +285,8 @@ def main() -> None:
         save_cache_manifest(
             cache_manifest_path,
             map_name=args.map_name,
+            map_uid=args.map_uid,
+            map_storage_key=map_storage_key,
             rank_range=args.rank_range,
             inputs=current_inputs,
             settings=cache_settings,
@@ -281,15 +295,15 @@ def main() -> None:
         )
 
     if not args.skip_install:
-        installed_path = install_bundle(bundle_path, args.storage_root, args.map_name, bundle_name)
+        installed_path = install_bundle(bundle_path, args.storage_root, map_storage_key, bundle_name)
         print(f"Installed: {installed_path}")
 
 
-def install_bundle(bundle_path: Path, storage_root: Path, map_name: str, bundle_name: str) -> Path:
+def install_bundle(bundle_path: Path, storage_root: Path, map_storage_key: str, bundle_name: str) -> Path:
     if not bundle_path.exists():
         raise FileNotFoundError(f"Bundle file not found: {bundle_path}")
 
-    target_dir = storage_root / "bundles" / _sanitize_path_part(map_name)
+    target_dir = storage_root / "bundles" / map_storage_key
     target_dir.mkdir(parents=True, exist_ok=True)
     target_path = target_dir / bundle_name
     shutil.copy2(bundle_path, target_path)
@@ -299,6 +313,8 @@ def install_bundle(bundle_path: Path, storage_root: Path, map_name: str, bundle_
 def build_cache_settings(args: argparse.Namespace, analysis_samples: int | None) -> dict[str, Any]:
     return {
         "map_name": args.map_name,
+        "map_uid": args.map_uid,
+        "map_storage_key": _map_storage_key(args.map_uid, args.map_name),
         "rank_range": args.rank_range,
         "mine": args.mine,
         "sample_mode": args.sample_mode,
@@ -473,8 +489,8 @@ def remove_stale_cached_trajectories(previous_manifest: dict[str, Any] | None, c
         print(f"Pipeline cache: removed {removed_count} stale trajectory file(s).", flush=True)
 
 
-def prepare_cached_extraction_input_dir(changed_inputs: list[dict[str, Any]], map_name: str, rank_range: str) -> Path:
-    input_dir = TEMP_DIR / "pipeline_cache_inputs" / _sanitize_path_part(map_name) / f"top_{_normalize_range(rank_range)}"
+def prepare_cached_extraction_input_dir(changed_inputs: list[dict[str, Any]], map_storage_key: str, rank_range: str) -> Path:
+    input_dir = TEMP_DIR / "pipeline_cache_inputs" / map_storage_key / f"top_{_normalize_range(rank_range)}"
     clean_directory(input_dir)
     input_dir.mkdir(parents=True, exist_ok=True)
 
@@ -500,6 +516,8 @@ def load_cache_manifest(path: Path) -> dict[str, Any] | None:
 def save_cache_manifest(
     path: Path,
     map_name: str,
+    map_uid: str | None,
+    map_storage_key: str,
     rank_range: str,
     inputs: list[dict[str, Any]],
     settings: dict[str, Any],
@@ -510,6 +528,8 @@ def save_cache_manifest(
     payload = {
         "schema": "racingline.pipeline_cache.v1",
         "map_name": map_name,
+        "map_uid": map_uid,
+        "map_storage_key": map_storage_key,
         "rank_range": rank_range,
         "settings": settings,
         "inputs": inputs,
@@ -535,8 +555,8 @@ def expected_trajectory_path(trajectory_source_dir: Path, map_name: str, input_f
     return trajectory_source_dir / f"{output_stem}.trajectory.json"
 
 
-def _cache_manifest_path(map_name: str, rank_range: str) -> Path:
-    return TEMP_DIR / "pipeline_cache" / _sanitize_path_part(map_name) / f"top_{_normalize_range(rank_range)}.json"
+def _cache_manifest_path(map_storage_key: str, rank_range: str) -> Path:
+    return TEMP_DIR / "pipeline_cache" / map_storage_key / f"top_{_normalize_range(rank_range)}.json"
 
 
 def clean_trajectory_dir(trajectory_source_dir: Path) -> None:
@@ -571,7 +591,7 @@ def clean_plot_dir(plot_output_dir: Path) -> None:
 def prepare_combined_replay_input_dir(
     replay_input_dir: Path,
     mine_replay_path: Path,
-    map_name: str,
+    map_storage_key: str,
     mine_name: str,
     rank_range: str,
     recursive: bool,
@@ -583,7 +603,7 @@ def prepare_combined_replay_input_dir(
     if not mine_replay_path.exists() or not mine_replay_path.is_file():
         raise FileNotFoundError(f"Mine replay file not found: {mine_replay_path}")
 
-    combined_dir = TEMP_DIR / "pipeline_inputs" / _sanitize_path_part(map_name) / f"top_{_normalize_range(rank_range)}"
+    combined_dir = TEMP_DIR / "pipeline_inputs" / map_storage_key / f"top_{_normalize_range(rank_range)}"
     clean_directory(combined_dir)
     combined_dir.mkdir(parents=True, exist_ok=True)
 
@@ -591,6 +611,15 @@ def prepare_combined_replay_input_dir(
     for source_path in iter_replay_input_files(replay_input_dir, recursive):
         shutil.copy2(source_path, combined_dir / source_path.name)
         copied_count += 1
+
+    if copied_count == 0:
+        clean_directory(combined_dir)
+        raise FileNotFoundError(
+            "No leaderboard replay/ghost files found before adding mine replay. "
+            f"Input directory: {replay_input_dir}. "
+            "Add .Replay.Gbx/.Ghost.Gbx files to the input directory, choose a populated --replay-input-dir, "
+            "or run with --download-ghosts plus --leaderboard-id and --map-uid."
+        )
 
     mine_file_name = f"{_sanitize_path_part(mine_name)}_mine.Replay.Gbx"
     shutil.copy2(mine_replay_path, combined_dir / mine_file_name)
@@ -623,8 +652,13 @@ def _default_replay_input_dir(map_name: str) -> Path:
     return map_dir if map_dir.exists() else RAW_REPLAYS_DIR
 
 
-def _default_mine_replay_path(storage_root: Path, map_name: str) -> Path:
-    return storage_root / "tmp" / _sanitize_path_part(map_name) / "mine.Replay.Gbx"
+def _default_mine_replay_path(storage_root: Path, map_uid: str | None, map_name: str) -> Path:
+    preferred_path = storage_root / "tmp" / _map_storage_key(map_uid, map_name) / "mine.Replay.Gbx"
+    if preferred_path.exists() or not map_uid:
+        return preferred_path
+
+    legacy_path = storage_root / "tmp" / _sanitize_path_part(map_name) / "mine.Replay.Gbx"
+    return legacy_path if legacy_path.exists() else preferred_path
 
 
 def _run(command: list[str]) -> None:
@@ -634,6 +668,13 @@ def _run(command: list[str]) -> None:
 
 def _normalize_range(rank_range: str) -> str:
     return rank_range.strip().replace("-", "_")
+
+
+def _map_storage_key(map_uid: str | None, map_name: str) -> str:
+    value = map_uid.strip() if map_uid else ""
+    if not value:
+        value = map_name
+    return _sanitize_path_part(value)
 
 
 def _sanitize_path_part(value: str) -> str:

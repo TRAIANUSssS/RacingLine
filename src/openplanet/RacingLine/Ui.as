@@ -43,6 +43,7 @@ void RenderUserWindowContent() {
                 bool isSelected = int(i) == g_SelectedBundleIndex;
                 if (UI::Selectable(g_AvailableBundleLabels[i] + "##user-bundle-" + g_AvailableBundleFiles[i], isSelected)) {
                     g_SelectedBundleFileName = g_AvailableBundleFiles[i];
+                    g_SelectedBundleFolderName = g_AvailableBundleFolders[i];
                     g_SelectedBundleIndex = int(i);
                     ReloadBundle();
                 }
@@ -142,6 +143,7 @@ void RenderDataSection() {
 
     UI::Text("Data");
     UI::Text("Current map: " + (g_CurrentMapName.Length > 0 ? g_CurrentMapName : "-"));
+    UI::Text("Current map uid: " + (g_CurrentMapUid.Length > 0 ? g_CurrentMapUid : "-"));
     UI::Text("Current user: " + (g_CurrentUserName.Length > 0 ? g_CurrentUserName : "-"));
     UI::Text("Current login: " + (g_CurrentUserLogin.Length > 0 ? g_CurrentUserLogin : "-"));
     UI::Text("Bundle folder: " + (g_CurrentMapFolderName.Length > 0 ? BundleRootDirectory + "/" + g_CurrentMapFolderName : "-"));
@@ -153,6 +155,7 @@ void RenderDataSection() {
             bool isSelected = int(i) == g_SelectedBundleIndex;
             if (UI::Selectable(g_AvailableBundleLabels[i] + "##" + g_AvailableBundleFiles[i], isSelected)) {
                 g_SelectedBundleFileName = g_AvailableBundleFiles[i];
+                g_SelectedBundleFolderName = g_AvailableBundleFolders[i];
                 g_SelectedBundleIndex = int(i);
                 ReloadBundle();
             }
@@ -255,9 +258,13 @@ void RenderInfoSection() {
     }
 
     UI::Text("Map: " + (g_Bundle.mapName.Length > 0 ? g_Bundle.mapName : "-"));
+    UI::Text("Map uid: " + (g_Bundle.mapUid.Length > 0 ? g_Bundle.mapUid : "-"));
     UI::Text("Current map: " + (g_CurrentMapName.Length > 0 ? g_CurrentMapName : "-"));
-    UI::Text("Bundle range: " + GetSelectedBundleLabel());
+    UI::Text("Bundle range: " + (g_Bundle.rankRange.Length > 0 ? g_Bundle.rankRange : GetSelectedBundleLabel()));
     UI::Text("Bundle file: " + g_SelectedBundleFileName);
+    UI::Text("Sample mode: " + (g_Bundle.sampleMode.Length > 0 ? g_Bundle.sampleMode : "-"));
+    UI::Text("Sample count: " + g_Bundle.sampleCount);
+    UI::Text("Generator: " + (g_Bundle.generator.Length > 0 ? g_Bundle.generator : "-"));
     UI::Text("Mine run: " + (g_Bundle.mineRunName.Length > 0 ? g_Bundle.mineRunName : "-"));
     UI::Text("Runs: " + g_Bundle.runs.Length);
     UI::Text("Center points: " + g_Bundle.centerLine.Length);

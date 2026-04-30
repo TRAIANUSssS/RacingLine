@@ -21,7 +21,19 @@ The bundle should be easy to consume from AngelScript:
   "schema_version": 1,
   "analysis_version": 1,
   "created_at": "2026-04-23T00:00:00+00:00",
+  "metadata": {
+    "schema_version": 1,
+    "map_uid": "2pYyYky9ccXdTBaaLncWOjFc6jf",
+    "map_name": "Spring 2026 - 03",
+    "rank_from": 1000,
+    "rank_to": 1010,
+    "sample_mode": "auto",
+    "sample_count": 470,
+    "created_at": "2026-04-23T00:00:00+00:00",
+    "generator": "pipeline.py"
+  },
   "map": {
+    "uid": "2pYyYky9ccXdTBaaLncWOjFc6jf",
     "name": "Spring 2026 - 03"
   },
   "coordinate_system": {
@@ -34,7 +46,12 @@ The bundle should be easy to consume from AngelScript:
   "source": {
     "analysis_json": "data\\processed\\Spring 2026 - 03\\analysis_data.json",
     "source_dir": "data\\raw\\trajectories\\Spring 2026 - 03",
-    "sample_count": 300
+    "rank_range": "1000-1010",
+    "rank_from": 1000,
+    "rank_to": 1010,
+    "sample_mode": "auto",
+    "sample_count": 470,
+    "generator": "pipeline.py"
   },
   "runs": [],
   "center_line": [],
@@ -48,6 +65,8 @@ The bundle should be easy to consume from AngelScript:
   "problem_zones": []
 }
 ```
+
+`metadata` is the preferred stable machine-readable block for MVP v3 and later. `map.uid` duplicates `metadata.map_uid` for convenient viewer access. Older bundles without these fields remain loadable.
 
 ## `runs`
 

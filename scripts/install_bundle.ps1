@@ -16,18 +16,20 @@ if (-not (Test-Path -LiteralPath $BundlePath)) {
 }
 
 $bundle = Get-Content -LiteralPath $BundlePath -Raw -Encoding UTF8 | ConvertFrom-Json
+$mapUid = $bundle.map.uid
 $mapName = $bundle.map.name
-if ([string]::IsNullOrWhiteSpace($mapName)) {
-    throw "Bundle map.name is empty: $BundlePath"
+$mapKey = if (-not [string]::IsNullOrWhiteSpace($mapUid)) { $mapUid } else { $mapName }
+if ([string]::IsNullOrWhiteSpace($mapKey)) {
+    throw "Bundle map.uid and map.name are empty: $BundlePath"
 }
 
 $invalidChars = [IO.Path]::GetInvalidFileNameChars()
-$mapFolderChars = foreach ($char in $mapName.ToCharArray()) {
+$mapFolderChars = foreach ($char in $mapKey.ToCharArray()) {
     if ($invalidChars -contains $char) { "_" } else { [string]$char }
 }
 $mapFolder = (-join $mapFolderChars).Trim()
 if ([string]::IsNullOrWhiteSpace($mapFolder)) {
-    throw "Bundle map.name cannot be converted to a folder name: $mapName"
+    throw "Bundle map key cannot be converted to a folder name: $mapKey"
 }
 
 $targetDir = Join-Path $StorageRoot (Join-Path "bundles" $mapFolder)

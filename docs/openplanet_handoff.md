@@ -26,9 +26,11 @@ It should not:
 - bundle parsing is implemented
 - UI window is implemented
 - bundle selection and reload are implemented
-- bundles are loaded from `bundles/{map}/` under Openplanet plugin storage
+- new bundles are loaded from `bundles/{map_uid}/` under Openplanet plugin storage
+- legacy `bundles/{map_name}/` folders are still listed when present
 - the default bundle filename is `top_1000_1010.analysis_bundle.json`
 - current map detection is implemented from `GetApp().RootMap.MapName`
+- current map UID detection is implemented from `GetApp().RootMap.MapInfo.MapUid`
 - current mine replay download is implemented through the `NadeoServices` dependency
 - pipeline command generation is implemented in the UI
 - `Show Center`, `Show Mine`, and `Show Problem Zones` toggles are implemented
@@ -45,7 +47,8 @@ It should not:
 The viewer should consume:
 
 - `.analysis_bundle.json` files from Openplanet plugin storage
-- default path: `PluginStorage/RacingLine/bundles/<map>/top_1000_1010.analysis_bundle.json`
+- default path: `PluginStorage/RacingLine/bundles/<map_uid>/top_1000_1010.analysis_bundle.json`
+- legacy fallback path: `PluginStorage/RacingLine/bundles/<map_name>/top_1000_1010.analysis_bundle.json`
 
 The most important bundle fields for the MVP are:
 
@@ -68,13 +71,14 @@ The current viewer can:
 - auto-load on startup
 - reload on demand from the UI
 - detect the current map name
+- detect the current map UID
 - show a compact user UI by default
 - switch to the full technical dev UI through `Dev mode`
 - show the current Openplanet user name/login
 - generate and copy a PowerShell command for `pipeline.py`
 - choose automatic or manual analysis sample count in the generated command
 - download the current player's personal-best replay for the current map into plugin storage
-- look for bundles in the detected map folder
+- look for bundles in the detected map UID folder, with a legacy map-name folder fallback
 - select available `.analysis_bundle.json` files from a combo box
 - show whether loading succeeded
 - show the last error message
@@ -136,7 +140,7 @@ If the currently selected/default bundle file does not exist for the current map
 Mine replay storage:
 
 ```text
-OpenplanetNext/PluginStorage/RacingLine/tmp/<map>/mine.Replay.Gbx
+OpenplanetNext/PluginStorage/RacingLine/tmp/<map_uid>/mine.Replay.Gbx
 ```
 
 The plugin resolves the current map UID, translates it to a Nadeo map ID, fetches the current account's personal-best record, and downloads the record replay URL via `NadeoServices`.
@@ -154,13 +158,13 @@ The loader resolves relative bundle paths inside Openplanet plugin storage.
 Default expected location for the current constant range:
 
 ```text
-C:\Users\<user>\OpenplanetNext\PluginStorage\RacingLine\bundles\<map>\top_1000_1010.analysis_bundle.json
+C:\Users\<user>\OpenplanetNext\PluginStorage\RacingLine\bundles\<map_uid>\top_1000_1010.analysis_bundle.json
 ```
 
 Example:
 
 ```text
-C:\Users\<user>\OpenplanetNext\PluginStorage\RacingLine\bundles\Spring 2026 - 03\top_1000_1010.analysis_bundle.json
+C:\Users\<user>\OpenplanetNext\PluginStorage\RacingLine\bundles\2pYyYky9ccXdTBaaLncWOjFc6jf\top_1000_1010.analysis_bundle.json
 ```
 
 The old flat storage path `PluginStorage/RacingLine/analysis_bundle.json` is no longer the default viewer target.

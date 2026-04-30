@@ -39,9 +39,52 @@ bool LoadBundle(const string &in path) {
     }
 
     AnalysisBundle@ bundle = AnalysisBundle();
+    bundle.createdAt = JsonGetString(root, "created_at");
     Json::Value@ mapObj = root.Get("map");
     if (mapObj !is null && mapObj.GetType() == Json::Type::Object) {
+        bundle.mapUid = JsonGetString(mapObj, "uid");
         bundle.mapName = JsonGetString(mapObj, "name");
+    }
+    Json::Value@ metadataObj = root.Get("metadata");
+    if (metadataObj !is null && metadataObj.GetType() == Json::Type::Object) {
+        string metadataMapUid = JsonGetString(metadataObj, "map_uid");
+        if (metadataMapUid.Length > 0) {
+            bundle.mapUid = metadataMapUid;
+        }
+        string metadataMapName = JsonGetString(metadataObj, "map_name");
+        if (metadataMapName.Length > 0) {
+            bundle.mapName = metadataMapName;
+        }
+        bundle.rankFrom = JsonGetInt(metadataObj, "rank_from");
+        bundle.rankTo = JsonGetInt(metadataObj, "rank_to");
+        bundle.sampleMode = JsonGetString(metadataObj, "sample_mode");
+        bundle.sampleCount = JsonGetInt(metadataObj, "sample_count");
+        bundle.createdAt = JsonGetString(metadataObj, "created_at");
+        bundle.generator = JsonGetString(metadataObj, "generator");
+        if (bundle.rankFrom > 0 && bundle.rankTo >= bundle.rankFrom) {
+            bundle.rankRange = "" + bundle.rankFrom + "-" + bundle.rankTo;
+        }
+    }
+    Json::Value@ sourceObj = root.Get("source");
+    if (sourceObj !is null && sourceObj.GetType() == Json::Type::Object) {
+        if (bundle.rankRange.Length == 0) {
+            bundle.rankRange = JsonGetString(sourceObj, "rank_range");
+        }
+        if (bundle.rankFrom == 0) {
+            bundle.rankFrom = JsonGetInt(sourceObj, "rank_from");
+        }
+        if (bundle.rankTo == 0) {
+            bundle.rankTo = JsonGetInt(sourceObj, "rank_to");
+        }
+        if (bundle.sampleMode.Length == 0) {
+            bundle.sampleMode = JsonGetString(sourceObj, "sample_mode");
+        }
+        if (bundle.sampleCount == 0) {
+            bundle.sampleCount = JsonGetInt(sourceObj, "sample_count");
+        }
+        if (bundle.generator.Length == 0) {
+            bundle.generator = JsonGetString(sourceObj, "generator");
+        }
     }
     bundle.mineRunName = JsonGetString(root, "mine_run_name");
 

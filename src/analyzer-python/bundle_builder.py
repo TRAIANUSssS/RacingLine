@@ -38,6 +38,10 @@ def main() -> None:
         default=None,
         help="Leaderboard rank range used to derive the default bundle name, for example 1000-1010.",
     )
+    parser.add_argument("--map-uid", default=None, help="Trackmania map UID to write into bundle metadata.")
+    parser.add_argument("--sample-mode", default=None, help="Analysis sample mode to write into bundle metadata.")
+    parser.add_argument("--sample-count", type=int, default=None, help="Resolved analysis sample count to write into bundle metadata.")
+    parser.add_argument("--generator", default="pipeline.py", help="Generator name/version to write into bundle metadata.")
     args = parser.parse_args()
 
     analysis_json = args.analysis_json
@@ -51,12 +55,42 @@ def main() -> None:
         bundle_name = f"top_{_normalize_range(args.rank_range)}.analysis_bundle.json"
 
     output_path = args.output or analysis_json.parent / bundle_name
-    build_bundle_from_analysis(analysis_json, output_path)
+    rank_from, rank_to = _parse_rank_range(args.rank_range)
+    build_bundle_from_analysis(
+        analysis_json,
+        output_path,
+        map_uid=args.map_uid,
+        rank_range=args.rank_range,
+        rank_from=rank_from,
+        rank_to=rank_to,
+        sample_mode=args.sample_mode,
+        sample_count=args.sample_count,
+        generator=args.generator,
+    )
     print(f"Saved: {output_path}")
 
 
 def _normalize_range(rank_range: str) -> str:
     return rank_range.strip().replace("-", "_")
+
+
+def _parse_rank_range(rank_range: str | None) -> tuple[int | None, int | None]:
+    if rank_range is None:
+        return None, None
+
+    parts = rank_range.strip().split("-", 1)
+    if len(parts) != 2:
+        return None, None
+
+    try:
+        start = int(parts[0])
+        end = int(parts[1])
+    except ValueError:
+        return None, None
+
+    if start < 1 or end < start:
+        return None, None
+    return start, end
 
 
 if __name__ == "__main__":

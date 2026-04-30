@@ -9,7 +9,18 @@ import json
 from .io_utils import format_repo_path, write_json
 
 
-def build_bundle_from_analysis(analysis_json_path: Path, output_path: Path) -> dict[str, Any]:
+def build_bundle_from_analysis(
+    analysis_json_path: Path,
+    output_path: Path,
+    *,
+    map_uid: str | None = None,
+    rank_range: str | None = None,
+    rank_from: int | None = None,
+    rank_to: int | None = None,
+    sample_mode: str | None = None,
+    sample_count: int | None = None,
+    generator: str | None = None,
+) -> dict[str, Any]:
     with analysis_json_path.open("r", encoding="utf-8") as file:
         analysis = json.load(file)
 
@@ -20,11 +31,25 @@ def build_bundle_from_analysis(analysis_json_path: Path, output_path: Path) -> d
     analysis_points = _build_analysis_points(mine_line)
     problem_zones = _normalize_problem_zones(analysis.get("problem_zones", []), center_line)
 
+    resolved_sample_count = sample_count if sample_count is not None else analysis.get("sample_count")
+    created_at = datetime.now(timezone.utc).isoformat()
     bundle = {
         "schema_version": 1,
         "analysis_version": 1,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": created_at,
+        "metadata": {
+            "schema_version": 1,
+            "map_uid": map_uid,
+            "map_name": analysis.get("map_name"),
+            "rank_from": rank_from,
+            "rank_to": rank_to,
+            "sample_mode": sample_mode,
+            "sample_count": resolved_sample_count,
+            "created_at": created_at,
+            "generator": generator,
+        },
         "map": {
+            "uid": map_uid,
             "name": analysis.get("map_name"),
         },
         "coordinate_system": {
@@ -37,7 +62,12 @@ def build_bundle_from_analysis(analysis_json_path: Path, output_path: Path) -> d
         "source": {
             "analysis_json": format_repo_path(analysis_json_path),
             "source_dir": analysis.get("source_dir"),
-            "sample_count": analysis.get("sample_count"),
+            "rank_range": rank_range,
+            "rank_from": rank_from,
+            "rank_to": rank_to,
+            "sample_mode": sample_mode,
+            "sample_count": resolved_sample_count,
+            "generator": generator,
         },
         "runs": runs,
         "center_line": center_line,

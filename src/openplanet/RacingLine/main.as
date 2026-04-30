@@ -19,12 +19,16 @@ bool g_ShowFullTrajectory = ShowFullTrajectory;
 float g_RenderDistance = RenderDistance;
 
 string g_CurrentMapName = "";
+string g_CurrentMapUid = "";
 string g_CurrentMapFolderName = "";
+string g_CurrentMapLegacyFolderName = "";
 string g_CurrentUserName = "";
 string g_CurrentUserLogin = "";
 string g_SelectedBundleFileName = DefaultBundleFileName;
+string g_SelectedBundleFolderName = "";
 string g_BundlePath = "";
 array<string> g_AvailableBundleFiles;
+array<string> g_AvailableBundleFolders;
 array<string> g_AvailableBundleLabels;
 array<int> g_AvailableBundleRangeStarts;
 array<int> g_AvailableBundleRangeEnds;
@@ -82,13 +86,17 @@ void ReloadBundle() {
 
 void UpdateCurrentMap(bool force) {
     string mapName = GetCurrentMapName();
-    if (!force && mapName == g_CurrentMapName) {
+    string mapUid = GetCurrentMapUid();
+    if (!force && mapName == g_CurrentMapName && mapUid == g_CurrentMapUid) {
         return;
     }
 
     g_CurrentMapName = mapName;
-    g_CurrentMapFolderName = SanitizePathSegment(mapName);
+    g_CurrentMapUid = mapUid;
+    g_CurrentMapFolderName = BuildMapStorageFolderName(mapUid, mapName);
+    g_CurrentMapLegacyFolderName = SanitizePathSegment(mapName);
     g_SelectedBundleFileName = DefaultBundleFileName;
+    g_SelectedBundleFolderName = g_CurrentMapFolderName;
     g_PipelineReplayInputDir = BuildDefaultReplayInputDir(mapName);
     g_MineReplayPath = BuildMineReplayStoragePath();
     UpdatePipelineCommand();
@@ -119,6 +127,7 @@ void UpdateCurrentUser() {
 
 void RefreshBundleFiles() {
     g_AvailableBundleFiles.Resize(0);
+    g_AvailableBundleFolders.Resize(0);
     g_AvailableBundleLabels.Resize(0);
     g_AvailableBundleRangeStarts.Resize(0);
     g_AvailableBundleRangeEnds.Resize(0);
@@ -128,19 +137,9 @@ void RefreshBundleFiles() {
         return;
     }
 
-    string bundleFolderPath = GetCurrentMapBundleFolderPath();
-    try {
-        auto files = IO::IndexFolder(bundleFolderPath, false);
-        for (uint i = 0; i < files.Length; i++) {
-            string fileName = FileNameFromPath(files[i]);
-            if (!fileName.EndsWith(".analysis_bundle.json")) {
-                continue;
-            }
-
-            InsertBundleFileSorted(fileName);
-        }
-    } catch {
-        return;
+    AddBundleFilesFromFolder(g_CurrentMapFolderName, false);
+    if (g_CurrentMapLegacyFolderName.Length > 0 && g_CurrentMapLegacyFolderName != g_CurrentMapFolderName) {
+        AddBundleFilesFromFolder(g_CurrentMapLegacyFolderName, true);
     }
 
     g_LastBundleRefreshTime = Time::Now;
@@ -148,6 +147,7 @@ void RefreshBundleFiles() {
     for (uint i = 0; i < g_AvailableBundleFiles.Length; i++) {
         if (g_AvailableBundleFiles[i] == g_SelectedBundleFileName) {
             g_SelectedBundleIndex = int(i);
+            g_SelectedBundleFolderName = g_AvailableBundleFolders[i];
             break;
         }
     }
@@ -159,6 +159,7 @@ void RefreshBundleFiles() {
     for (uint i = 0; i < g_AvailableBundleFiles.Length; i++) {
         if (g_AvailableBundleFiles[i] == DefaultBundleFileName) {
             g_SelectedBundleFileName = DefaultBundleFileName;
+            g_SelectedBundleFolderName = g_AvailableBundleFolders[i];
             g_SelectedBundleIndex = int(i);
             return;
         }
@@ -166,9 +167,32 @@ void RefreshBundleFiles() {
 
     if (g_AvailableBundleFiles.Length > 0) {
         g_SelectedBundleFileName = g_AvailableBundleFiles[0];
+        g_SelectedBundleFolderName = g_AvailableBundleFolders[0];
         g_SelectedBundleIndex = 0;
     } else {
         g_SelectedBundleFileName = DefaultBundleFileName;
+        g_SelectedBundleFolderName = g_CurrentMapFolderName;
+    }
+}
+
+void AddBundleFilesFromFolder(const string &in folderName, bool legacy) {
+    if (folderName.Length == 0) {
+        return;
+    }
+
+    string bundleFolderPath = IO::FromStorageFolder(BundleRootDirectory + "/" + folderName);
+    try {
+        auto files = IO::IndexFolder(bundleFolderPath, false);
+        for (uint i = 0; i < files.Length; i++) {
+            string fileName = FileNameFromPath(files[i]);
+            if (!fileName.EndsWith(".analysis_bundle.json")) {
+                continue;
+            }
+
+            InsertBundleFileSorted(fileName, folderName, legacy);
+        }
+    } catch {
+        return;
     }
 }
 
@@ -196,11 +220,20 @@ bool IsBundleFileAvailable(const string &in fileName) {
     return false;
 }
 
-void InsertBundleFileSorted(const string &in fileName) {
+void InsertBundleFileSorted(const string &in fileName, const string &in folderName, bool legacy) {
+    for (uint i = 0; i < g_AvailableBundleFiles.Length; i++) {
+        if (g_AvailableBundleFiles[i] == fileName) {
+            return;
+        }
+    }
+
     int start = 0;
     int end = 0;
     bool hasRange = TryParseBundleRange(fileName, start, end);
     string label = hasRange ? "" + start + "-" + end : fileName;
+    if (legacy) {
+        label += " (legacy)";
+    }
 
     uint insertIndex = g_AvailableBundleFiles.Length;
     for (uint i = 0; i < g_AvailableBundleFiles.Length; i++) {
@@ -211,6 +244,7 @@ void InsertBundleFileSorted(const string &in fileName) {
     }
 
     g_AvailableBundleFiles.InsertAt(insertIndex, fileName);
+    g_AvailableBundleFolders.InsertAt(insertIndex, folderName);
     g_AvailableBundleLabels.InsertAt(insertIndex, label);
     g_AvailableBundleRangeStarts.InsertAt(insertIndex, start);
     g_AvailableBundleRangeEnds.InsertAt(insertIndex, end);
@@ -306,7 +340,8 @@ string GetSelectedBundleLabel() {
 }
 
 string BuildCurrentMapBundlePath(const string &in fileName) {
-    return BundleRootDirectory + "/" + g_CurrentMapFolderName + "/" + fileName;
+    string folderName = g_SelectedBundleFolderName.Length > 0 ? g_SelectedBundleFolderName : g_CurrentMapFolderName;
+    return BundleRootDirectory + "/" + folderName + "/" + fileName;
 }
 
 string GetCurrentMapBundleFolderPath() {
@@ -348,6 +383,14 @@ string SanitizePathSegment(const string &in value) {
     return result;
 }
 
+string BuildMapStorageFolderName(const string &in mapUid, const string &in mapName) {
+    string uidFolder = SanitizePathSegment(mapUid);
+    if (uidFolder.Length > 0) {
+        return uidFolder;
+    }
+    return SanitizePathSegment(mapName);
+}
+
 void UpdatePipelineCommand() {
     g_PipelineCommand = BuildPipelineCommand(false);
 }
@@ -370,6 +413,9 @@ string BuildPipelineCommand(bool force) {
 
     string command = "python .\\pipeline.py";
     command += " --map " + QuotePowerShell(mapName);
+    if (g_CurrentMapUid.Length > 0) {
+        command += " --map-uid " + QuotePowerShell(g_CurrentMapUid);
+    }
     command += " --mine " + QuotePowerShell(mineNickname);
     command += " --range " + QuotePowerShell(BuildPipelineRange());
     if (force) {
