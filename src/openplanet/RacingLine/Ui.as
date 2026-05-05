@@ -342,6 +342,7 @@ void RenderToggleSection() {
 }
 
 void RenderRenderSettingsSliders() {
+    g_HideOverlayInGameMenu = UI::Checkbox("Hide Overlay In Escape Menu", g_HideOverlayInGameMenu);
     g_UseRouteWindow = UI::Checkbox("Use Route Window", g_UseRouteWindow);
     if (g_UseRouteWindow) {
         g_RouteLookbehindDistance = UI::SliderFloat("Route lookbehind", g_RouteLookbehindDistance, 0.0f, 300.0f);

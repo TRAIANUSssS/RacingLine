@@ -24,6 +24,7 @@ float ProblemZoneMarkerSize = 8.0f;
 int MaxVisibleProblemZones = 5;
 bool ShowFullTrajectory = false;
 float RenderDistance = 300.0f;
+bool HideOverlayInGameMenu = true;
 bool UseRouteWindow = true;
 float RouteLookbehindDistance = 50.0f;
 float RouteLookaheadDistance = 300.0f;

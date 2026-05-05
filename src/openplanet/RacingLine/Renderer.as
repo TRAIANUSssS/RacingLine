@@ -74,6 +74,16 @@ bool TryGetCurrentCarPosition(vec3 &out carPos) {
     return true;
 }
 
+bool IsInGameMenuDisplayed() {
+    CTrackMania@ app = cast<CTrackMania>(GetApp());
+    if (app is null || app.CurrentPlayground is null || app.CurrentPlayground.Interface is null) {
+        return false;
+    }
+
+    auto scriptHandler = app.CurrentPlayground.Interface.ManialinkScriptHandler;
+    return scriptHandler !is null && scriptHandler.IsInGameMenuDisplayed;
+}
+
 float DistanceSquared(const vec3 &in a, const vec3 &in b) {
     float dx = a.x - b.x;
     float dy = a.y - b.y;
@@ -537,6 +547,12 @@ void RenderWorldOverlay() {
     g_LastSkippedOtherRunSegments = 0;
     g_LastProjectedProblemZones = 0;
     g_LastSkippedProblemZones = 0;
+
+    if (g_HideOverlayInGameMenu && IsInGameMenuDisplayed()) {
+        g_RouteWindowAvailable = false;
+        return;
+    }
+
     g_LastRenderReferenceAvailable = g_ShowFullTrajectory ? false : TryGetCurrentCarPosition(g_LastRenderReferencePos);
     if (g_LastRenderReferenceAvailable) {
         UpdateRouteWindow(g_LastRenderReferencePos);

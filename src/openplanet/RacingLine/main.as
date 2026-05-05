@@ -17,6 +17,7 @@ float g_ProblemZoneMarkerSize = ProblemZoneMarkerSize;
 int g_MaxVisibleProblemZones = MaxVisibleProblemZones;
 bool g_ShowFullTrajectory = ShowFullTrajectory;
 float g_RenderDistance = RenderDistance;
+bool g_HideOverlayInGameMenu = HideOverlayInGameMenu;
 bool g_UseRouteWindow = UseRouteWindow;
 float g_RouteLookbehindDistance = RouteLookbehindDistance;
 float g_RouteLookaheadDistance = RouteLookaheadDistance;

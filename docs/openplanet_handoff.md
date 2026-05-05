@@ -41,6 +41,7 @@ Direct GBX parsing remains outside AngelScript. The Stage 5 runtime-sampling tra
 - runtime sliders for line widths, marker size, and visible problem zone count are implemented
 - `Show Full Trajectory` and `Render Distance` controls are implemented
 - route-window rendering is implemented and enabled by default
+- world overlay hiding while the Trackmania Escape/in-game menu is displayed is implemented and enabled by default
 - `center_line` world rendering is implemented
 - `mine_line` world rendering is implemented
 - `problem_zones` world marker rendering is implemented
@@ -106,6 +107,7 @@ The current viewer can:
 - adjust center line width, mine line width, problem marker size, and visible problem zone count from the UI
 - limit rendered overlay layers to a continuous route window around the current car unless `Show Full Trajectory` is enabled
 - fall back to distance filtering when route-window mode is disabled or unavailable
+- hide all world overlay lines and markers when the Trackmania Escape/in-game menu is open
 
 Current UI block order:
 
@@ -175,6 +177,19 @@ Current route-window tuning values live in `Config.as` and are exposed in the ad
 - `RouteAnchorForwardSearchPoints`
 
 `Show Full Trajectory` disables route-window limiting and renders the full selected bundle. The older `Render Distance` control remains as fallback/debug behavior when route-window mode is off or unavailable.
+
+## Escape menu overlay hiding
+
+The world overlay is hidden while the Trackmania Escape/in-game menu is displayed.
+
+Implementation:
+
+- `Renderer.as` checks `CurrentPlayground.Interface.ManialinkScriptHandler.IsInGameMenuDisplayed`
+- `HideOverlayInGameMenu` is enabled by default
+- when the menu is displayed, `RenderWorldOverlay()` returns before drawing center, mine, other-run, or problem-zone layers
+- the RacingLine UI window remains available; only world-space overlay rendering is suppressed
+
+The option is currently exposed in advanced render options as `Hide Overlay In Escape Menu`. It should move to Openplanet settings during the settings cleanup pass.
 
 Mine replay storage:
 

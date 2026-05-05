@@ -1059,12 +1059,18 @@ Problem:
 - problem zone dots and/or trajectory overlay remain visible while the game is paused
 - this adds visual noise when the player is not actively driving
 
-Planned direction:
+Implemented direction:
 
-- detect paused/menu state from Openplanet/Trackmania runtime state
-- add a setting such as `Hide overlay when paused`, enabled by default
-- at minimum, hide problem zone markers while paused
-- if reliable, hide the whole world overlay while paused
+- detect the Trackmania Escape/in-game menu through Openplanet's playground manialink script handler
+- add `HideOverlayInGameMenu`, enabled by default
+- hide the whole world overlay while the in-game menu is displayed
+- keep the RacingLine UI window itself available; only center/mine/other-run lines and problem zone markers stop rendering
+
+Current status:
+
+- implemented in `Renderer.as`
+- exposed temporarily in advanced render options as `Hide Overlay In Escape Menu`
+- should move into Openplanet settings during the settings cleanup pass
 
 ### Stage 3 - Move Extra Options into Openplanet settings
 
