@@ -14,9 +14,10 @@ It should:
 
 It should not:
 
-- parse `.Replay.Gbx`
 - compute centerlines
 - run offline analysis inside AngelScript
+
+Direct GBX parsing remains outside AngelScript. The Stage 5 runtime-sampling trajectory export POC was removed from the active UI after `DataFileMgr.Replay_Load` failed to load Core-downloaded leaderboard replay files. The current MVP v3 path is Openplanet download + local helper processing through the existing C# GBX.NET extractor and Python analyzer.
 
 ## Current status
 
@@ -33,6 +34,7 @@ It should not:
 - current map UID detection is implemented from `GetApp().RootMap.MapInfo.MapUid`
 - current mine replay download is implemented through the `NadeoServices` dependency
 - leaderboard record download is implemented through `NadeoServices` Live/Core APIs as a Stage 4 POC
+- local helper status display is implemented for file-based processing handoff
 - pipeline command generation is implemented in the UI
 - `Show Center`, `Show Mine`, and `Show Problem Zones` toggles are implemented
 - `Show Other Runs` is implemented for bundles that include `runs[].line`
@@ -80,6 +82,7 @@ The current viewer can:
 - choose automatic or manual analysis sample count in the generated command
 - download the current player's personal-best replay for the current map into plugin storage
 - download leaderboard record replay files for the selected rank range into plugin storage
+- show local helper task status written under `PluginStorage/RacingLine/tasks/`
 - look for bundles in the detected map UID folder, with a legacy map-name folder fallback
 - select available `.analysis_bundle.json` files from a combo box
 - show whether loading succeeded
@@ -137,6 +140,7 @@ The `Pipeline` block includes:
 - automatic replay input directory targeting `data/raw/ghosts/<map_uid>/top_<range>/`
 - an `Auto replay dir` toggle for manually overriding the input directory in dev mode
 - leaderboard record download controls and status
+- local helper status and log path
 
 The `Data` block lists installed bundles for the current map as compact rank ranges such as `100-110` and `1000-1020`, sorted by numeric range start/end. The underlying files remain named `top_<range>.analysis_bundle.json`. The list refreshes automatically while the UI is open and can still be refreshed manually.
 
@@ -157,6 +161,24 @@ OpenplanetNext/PluginStorage/RacingLine/downloads/<map_uid>/top_<range>/
 The plugin downloads Core record replay URLs as `.Replay.Gbx` files and writes a `manifest.json` with source metadata, local paths, download/cache status, and errors. The same action also downloads or reuses the current player's mine replay in `tmp/<map_uid>/mine.Replay.Gbx`. After a successful download, the generated pipeline command points `--replay-input-dir` at this PluginStorage download folder and includes the mine replay flags.
 
 The plugin resolves the current map UID, translates it to a Nadeo map ID, fetches the current account's personal-best record, and downloads the record replay URL via `NadeoServices`.
+
+Local helper task storage:
+
+```text
+OpenplanetNext/PluginStorage/RacingLine/tasks/running/
+OpenplanetNext/PluginStorage/RacingLine/tasks/done/
+OpenplanetNext/PluginStorage/RacingLine/logs/
+```
+
+`scripts/racingline_helper.py` watches the `downloads/` folder, runs `pipeline.py`, and writes deterministic task files such as:
+
+```text
+tasks/running/task_<map_uid>_top_<from>_<to>.json
+tasks/done/task_<map_uid>_top_<from>_<to>.json
+logs/task_<map_uid>_top_<from>_<to>.log
+```
+
+The Openplanet UI reads the task file for the current map/range and displays status/progress/error text. Processing remains outside Openplanet.
 
 Pipeline range rules:
 

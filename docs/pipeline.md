@@ -15,6 +15,42 @@ RacingLine currently works as an offline-first pipeline with an Openplanet in-ga
 9. Load that bundle from the Openplanet UI
 10. Render `center_line`, `mine_line`, and `problem_zones` in-game through the Openplanet viewer
 
+## Local helper automation
+
+MVP v3 now includes a local helper watcher:
+
+```powershell
+python .\scripts\racingline_helper.py
+```
+
+The helper watches:
+
+```text
+OpenplanetNext/PluginStorage/RacingLine/downloads/
+```
+
+When Openplanet finishes downloading a folder such as:
+
+```text
+downloads/<map_uid>/top_<from>_<to>/
+```
+
+the helper runs the existing `pipeline.py` through local subprocesses, using the C# GBX.NET extractor for replay parsing. It writes the final bundle to:
+
+```text
+bundles/<map_uid>/top_<from>_<to>.analysis_bundle.json
+```
+
+and writes task state/logs to:
+
+```text
+tasks/running/
+tasks/done/
+logs/
+```
+
+Openplanet remains UI-only: it downloads replay files, reads helper task status files, refreshes bundle files, and renders prepared bundles.
+
 ## Layers
 
 ### Extraction
@@ -208,6 +244,13 @@ The Openplanet command handoff stage is implemented:
 - the dev Pipeline block can add `--write-plots`; compact user commands do not generate plots
 - rank range fields are clamped to rank values of at least `1` and a maximum span of `20`
 - no upper leaderboard limit is enforced yet; this should later come from leaderboard metadata
+
+The preferred MVP v3 automation path is now the local helper watcher. Command generation remains useful for developer fallback, but normal usage should be:
+
+1. Start `scripts/racingline_helper.py` locally.
+2. Use Openplanet to download records.
+3. Let the helper build/install the bundle automatically.
+4. Let Openplanet auto-refresh and load the bundle.
 
 The current pipeline cache behavior is:
 

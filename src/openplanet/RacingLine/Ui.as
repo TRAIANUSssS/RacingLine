@@ -30,6 +30,7 @@ void RenderDevWindowContent() {
 
 void RenderUserWindowContent() {
     AutoRefreshBundleFiles();
+    AutoRefreshHelperStatus();
     UpdatePipelineCommand();
 
     UI::Text("Current map: " + (g_CurrentMapName.Length > 0 ? g_CurrentMapName : "-"));
@@ -64,23 +65,7 @@ void RenderUserWindowContent() {
     UI::Text("Generate new bundle");
     RenderUserRankControls();
     RenderLeaderboardDownloadSection(false);
-
-    if (UI::Button("Generate")) {
-        UpdatePipelineCommand();
-        IO::SetClipboard(g_PipelineCommand);
-        RefreshBundleFiles();
-        g_PipelineCopyStatus = "Command copied.";
-    }
-    UI::SameLine();
-    if (UI::Button("Force generate")) {
-        UpdatePipelineCommandWithForce();
-        IO::SetClipboard(g_PipelineCommand);
-        RefreshBundleFiles();
-        g_PipelineCopyStatus = "Force command copied.";
-    }
-    if (g_PipelineCopyStatus.Length > 0) {
-        UI::Text(g_PipelineCopyStatus);
-    }
+    RenderHelperStatusSection(false);
 
     g_PipelineAutoSamples = UI::Checkbox("Auto samples", g_PipelineAutoSamples);
     if (g_PipelineAutoSamples) {
@@ -175,6 +160,7 @@ void RenderDataSection() {
 
 void RenderPipelineSection() {
     UI::Text("Pipeline");
+    AutoRefreshHelperStatus();
     UpdatePipelineCommand();
 
     string previousRoot = g_PipelineProjectRoot;
@@ -224,6 +210,8 @@ void RenderPipelineSection() {
 
     UI::Separator();
     RenderLeaderboardDownloadSection(true);
+    UI::Separator();
+    RenderHelperStatusSection(true);
 
     if (UI::Button("Generate command")) {
         UpdatePipelineCommand();
@@ -267,6 +255,20 @@ void RenderLeaderboardDownloadSection(bool devMode) {
 
     if (devMode) {
         UI::Text("Total entries: " + g_LeaderboardTotalCount);
+    }
+}
+
+void RenderHelperStatusSection(bool devMode) {
+    UI::Text("Local helper");
+    UI::TextWrapped("Status: " + g_HelperStatus + (g_HelperProgress.Length > 0 ? " / " + g_HelperProgress : ""));
+    if (g_HelperError.Length > 0) {
+        UI::TextWrapped("Error: " + g_HelperError);
+    }
+    if (devMode && g_HelperLogPath.Length > 0) {
+        UI::TextWrapped("Log: " + g_HelperLogPath);
+    }
+    if (UI::Button("Refresh helper status")) {
+        RefreshHelperStatus();
     }
 }
 

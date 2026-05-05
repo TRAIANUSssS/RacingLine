@@ -404,6 +404,9 @@ void WriteLeaderboardDownloadManifest(
     file.Write("  \"map_uid\": \"" + JsonEscape(mapUid) + "\",\n");
     file.Write("  \"map_id\": \"" + JsonEscape(mapId) + "\",\n");
     file.Write("  \"map_name\": \"" + JsonEscape(mapName) + "\",\n");
+    file.Write("  \"mine_name\": \"" + JsonEscape(StripTrackmaniaFormatCodes(g_CurrentUserName).Trim()) + "\",\n");
+    file.Write("  \"current_user_name\": \"" + JsonEscape(g_CurrentUserName) + "\",\n");
+    file.Write("  \"current_user_login\": \"" + JsonEscape(g_CurrentUserLogin) + "\",\n");
     file.Write("  \"rank_from\": " + rankFrom + ",\n");
     file.Write("  \"rank_to\": " + rankTo + ",\n");
     file.Write("  \"created_at\": \"" + JsonEscape(Time::FormatStringUTC("%Y-%m-%dT%H:%M:%SZ", Time::Stamp)) + "\",\n");

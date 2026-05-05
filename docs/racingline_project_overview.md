@@ -749,6 +749,44 @@ Current direction:
 - keep the current extractor, analyzer, bundle builder, and cache behavior as the working reference implementation
 - treat full plugin-side bundle generation as a later migration target, not the first MVP v3 step
 
+### Current MVP v3 implementation
+
+The current working MVP v3 architecture is file-based Openplanet-to-helper automation:
+
+```text
+Openplanet downloads replays
+-> PluginStorage/RacingLine/downloads/<map_uid>/top_<from>_<to>/
+-> scripts/racingline_helper.py watches downloads/
+-> pipeline.py runs C# extraction + Python analysis + bundle building
+-> PluginStorage/RacingLine/bundles/<map_uid>/top_<from>_<to>.analysis_bundle.json
+-> Openplanet refreshes bundle list and renders
+```
+
+Openplanet responsibilities:
+
+- detect current map and player
+- choose rank range
+- download leaderboard replay files and the current player's mine replay
+- write `manifest.json` next to downloaded files
+- read helper status files from `tasks/running/` and `tasks/done/`
+- load and render installed bundles
+
+Helper responsibilities:
+
+- watch `PluginStorage/RacingLine/downloads/`
+- detect stable downloaded datasets
+- run the existing local pipeline through subprocesses
+- rely on the C# GBX.NET extractor for replay parsing
+- write task status JSON and logs under `PluginStorage/RacingLine/tasks/` and `PluginStorage/RacingLine/logs/`
+- install bundles under `PluginStorage/RacingLine/bundles/<map_uid>/`
+
+Reason for the helper:
+
+- Openplanet cannot execute external processes
+- Openplanet AngelScript is not a practical place to parse GBX files
+- `DataFileMgr.Replay_Load` does not load the Core-downloaded leaderboard `.Replay.Gbx` files, while the C# GBX.NET extractor parses those same files successfully
+- file-based communication keeps Openplanet UI-only and keeps heavy processing local
+
 ### Stage 1 - Stabilize bundle and data contract
 
 Required cleanup:
@@ -881,11 +919,38 @@ Open question:
 
 ### Stage 5 - Download and unpack on the plugin side
 
-Next migration stage:
+Status: superseded by local helper automation.
+
+Original migration stage:
 
 - Openplanet downloads ghosts itself
 - replay/ghost unpacking moves closer to the plugin
 - the Python analyzer and bundle builder can remain external at first
+
+Previous implementation:
+
+- `ReplayExtractor.as` adds a first plugin-side trajectory export path
+- the UI can run `Extract trajectories` after leaderboard replay download
+- the plugin loads local `.Replay.Gbx` / `.Ghost.Gbx` files through the game's `DataFileMgr.Replay_Load`
+- loaded ghosts are sampled at runtime through `Ghost_GetPosition`
+- trajectory JSON is written to:
+
+```text
+PluginStorage/RacingLine/trajectories/<map_uid>/top_<from>_<to>/
+```
+
+- each exported file uses the existing raw trajectory point contract:
+
+```json
+{ "t": 0, "x": 0.0, "y": 0.0, "z": 0.0, "speed": 0.0 }
+```
+
+- `manifest.json` records source files, output files, point counts, and errors
+
+Limitation:
+
+- this is runtime ghost sampling, not a direct AngelScript GBX parser
+- `RecordData -> EntList -> Samples` is still not exposed through normal Openplanet AngelScript API, so the C# GBX.NET extractor remains the higher-fidelity reference extractor
 
 Main risk:
 
@@ -893,9 +958,25 @@ Main risk:
 - reimplementing GBX parsing in AngelScript may be expensive and fragile
 - a small local helper may be more practical than a full AngelScript parser
 
+Outcome:
+
+- Openplanet `DataFileMgr.Replay_Load` does not load the Core-downloaded leaderboard `.Replay.Gbx` files, even though the C# GBX.NET extractor parses the same files successfully
+- the plugin-side runtime sampling path has been removed from the UI
+- the project now uses `scripts/racingline_helper.py` as the MVP v3 local automation path
+- Openplanet downloads replay files and reads helper status files
+- the helper watches `PluginStorage/RacingLine/downloads/`, runs the existing C# + Python pipeline, writes status/log files, and installs bundles into `PluginStorage/RacingLine/bundles/<map_uid>/`
+
 ### Stage 6 - Download, unpack, and create bundle on the plugin side
 
-Longer-term target:
+Status: canceled for MVP v3.
+
+Reason:
+
+- the current helper architecture already provides the intended one-click local UX without moving heavy processing into AngelScript
+- plugin-side bundle generation would require reimplementing stable C# and Python logic in Openplanet
+- Openplanet `DataFileMgr.Replay_Load` is not reliable for the Core-downloaded leaderboard replay files used by the current download flow
+
+Original longer-term target:
 
 - Openplanet downloads ghosts
 - Openplanet or a tightly integrated helper extracts trajectory data
@@ -914,5 +995,6 @@ This stage is large because it requires moving or replacing:
 
 Recommendation:
 
-- do not start MVP v3 here
-- only attempt this after the local folder layout, metadata contract, no-plot normal flow, and old-pipeline orchestration are stable
+- do not implement plugin-side bundle generation for MVP v3
+- keep Openplanet UI-only
+- keep extraction, analysis, bundle building, and cache behavior in the local helper / existing pipeline

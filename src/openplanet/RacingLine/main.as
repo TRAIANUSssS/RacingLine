@@ -48,6 +48,11 @@ string g_PipelineCopyStatus = "";
 bool g_MineReplayDownloadRunning = false;
 string g_MineReplayDownloadStatus = "";
 string g_MineReplayPath = "";
+string g_HelperStatus = "Idle.";
+string g_HelperProgress = "";
+string g_HelperError = "";
+string g_HelperLogPath = "";
+uint64 g_LastHelperStatusRefreshTime = 0;
 
 void Main() {
     NadeoServices::AddAudience(NadeoCoreAudience);
@@ -109,6 +114,11 @@ void UpdateCurrentMap(bool force) {
     g_LeaderboardSkippedCount = 0;
     g_LeaderboardFailedCount = 0;
     g_LeaderboardTotalCount = 0;
+    g_HelperStatus = "Idle.";
+    g_HelperProgress = "";
+    g_HelperError = "";
+    g_HelperLogPath = "";
+    g_LastHelperStatusRefreshTime = 0;
     UpdatePipelineCommand();
     RefreshBundleFiles();
     ReloadBundle();
@@ -219,6 +229,92 @@ void AutoRefreshBundleFiles() {
             ReloadBundle();
         }
     }
+}
+
+void AutoRefreshHelperStatus() {
+    uint64 now = Time::Now;
+    if (g_LastHelperStatusRefreshTime == 0 || now < g_LastHelperStatusRefreshTime || now - g_LastHelperStatusRefreshTime >= 2000) {
+        RefreshHelperStatus();
+    }
+}
+
+void RefreshHelperStatus() {
+    g_LastHelperStatusRefreshTime = Time::Now;
+
+    string runningPath = BuildCurrentHelperTaskStoragePath("running");
+    string donePath = BuildCurrentHelperTaskStoragePath("done");
+    if (TryLoadHelperStatus(runningPath)) {
+        return;
+    }
+    if (TryLoadHelperStatus(donePath)) {
+        if (!g_BundleLoaded && IsBundleFileAvailable(g_SelectedBundleFileName)) {
+            ReloadBundle();
+        } else {
+            RefreshBundleFiles();
+        }
+        return;
+    }
+
+    g_HelperStatus = "Waiting for helper.";
+    g_HelperProgress = "";
+    g_HelperError = "";
+    g_HelperLogPath = "";
+}
+
+bool TryLoadHelperStatus(const string &in path) {
+    string resolvedPath = IO::FromStorageFolder(path);
+    if (!IO::FileExists(resolvedPath)) {
+        return false;
+    }
+
+    string content;
+    try {
+        IO::File file(resolvedPath, IO::FileMode::Read);
+        content = file.ReadToEnd();
+        file.Close();
+    } catch {
+        g_HelperStatus = "Failed to read helper status.";
+        g_HelperProgress = "";
+        g_HelperError = resolvedPath;
+        g_HelperLogPath = "";
+        return true;
+    }
+
+    Json::Value@ root;
+    try {
+        @root = Json::Parse(content);
+    } catch {
+        g_HelperStatus = "Invalid helper status.";
+        g_HelperProgress = "";
+        g_HelperError = resolvedPath;
+        g_HelperLogPath = "";
+        return true;
+    }
+
+    if (root is null || root.GetType() != Json::Type::Object) {
+        return false;
+    }
+
+    g_HelperStatus = JsonGetString(root, "status");
+    if (g_HelperStatus.Length == 0) {
+        g_HelperStatus = "unknown";
+    }
+    g_HelperProgress = JsonGetString(root, "progress");
+    g_HelperError = JsonGetString(root, "error");
+    g_HelperLogPath = JsonGetString(root, "log_path");
+    return true;
+}
+
+string BuildCurrentHelperTaskStoragePath(const string &in state) {
+    return "tasks/" + state + "/" + BuildCurrentHelperTaskFileName();
+}
+
+string BuildCurrentHelperTaskFileName() {
+    string folder = BuildMapStorageFolderName(g_CurrentMapUid, g_CurrentMapName);
+    if (folder.Length == 0) {
+        folder = "unknown_map";
+    }
+    return "task_" + folder + "_top_" + BuildPipelineRangeFolderName() + ".json";
 }
 
 bool IsBundleFileAvailable(const string &in fileName) {
