@@ -437,9 +437,15 @@ void DrawOtherRuns() {
     }
 
     nvg::StrokeWidth(g_OtherRunLineWidth);
-    nvg::StrokeColor(OtherRunLineColor);
+    nvg::StrokeColor(vec4(OtherRunLineColor.x, OtherRunLineColor.y, OtherRunLineColor.z, g_OtherRunOpacity));
 
+    uint visibleRunCount = 0;
+    uint visibleRunLimit = uint(MaxInt(g_MaxVisibleOtherRuns, 0));
     for (uint runIndex = 0; runIndex < g_Bundle.runs.Length; runIndex++) {
+        if (visibleRunCount >= visibleRunLimit) {
+            break;
+        }
+
         RunInfo@ run = g_Bundle.runs[runIndex];
         if (run is null || run.line.Length < 2 || IsMineRun(run)) {
             continue;
@@ -482,6 +488,7 @@ void DrawOtherRuns() {
 
         if (runProjectedSegments > 0) {
             nvg::Stroke();
+            visibleRunCount++;
         }
     }
 }

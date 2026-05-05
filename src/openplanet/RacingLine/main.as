@@ -4,7 +4,6 @@ string g_LastError = "";
 
 bool g_ShowWindow = true;
 bool g_DevMode = false;
-bool g_ShowAdvancedOptions = false;
 bool g_ShowCenter = true;
 bool g_ShowMine = true;
 bool g_ShowOtherRuns = false;
@@ -15,6 +14,8 @@ float g_MineLineWidth = MineLineWidth;
 float g_OtherRunLineWidth = OtherRunLineWidth;
 float g_ProblemZoneMarkerSize = ProblemZoneMarkerSize;
 int g_MaxVisibleProblemZones = MaxVisibleProblemZones;
+int g_MaxVisibleOtherRuns = MaxVisibleOtherRuns;
+float g_OtherRunOpacity = OtherRunOpacity;
 bool g_ShowFullTrajectory = ShowFullTrajectory;
 float g_RenderDistance = RenderDistance;
 bool g_HideOverlayInGameMenu = HideOverlayInGameMenu;
@@ -24,6 +25,10 @@ float g_RouteLookaheadDistance = RouteLookaheadDistance;
 float g_RouteReacquireDistance = RouteReacquireDistance;
 int g_RouteAnchorBackSearchPoints = RouteAnchorBackSearchPoints;
 int g_RouteAnchorForwardSearchPoints = RouteAnchorForwardSearchPoints;
+bool g_AutoLoadGeneratedBundle = AutoLoadGeneratedBundle;
+bool g_ShowRouteDebug = ShowRouteDebug;
+int g_DefaultRangeFrom = PipelineDefaultRangeFrom;
+int g_DefaultRangeTo = PipelineDefaultRangeTo;
 
 string g_CurrentMapName = "";
 string g_CurrentMapUid = "";
@@ -59,6 +64,9 @@ string g_HelperStatus = "Idle.";
 string g_HelperProgress = "";
 string g_HelperError = "";
 string g_HelperLogPath = "";
+string g_HelperTaskId = "";
+string g_HelperUpdatedAt = "";
+string g_LastAutoLoadedTaskId = "";
 uint64 g_LastHelperStatusRefreshTime = 0;
 
 void Main() {
@@ -126,6 +134,9 @@ void UpdateCurrentMap(bool force) {
     g_HelperProgress = "";
     g_HelperError = "";
     g_HelperLogPath = "";
+    g_HelperTaskId = "";
+    g_HelperUpdatedAt = "";
+    g_LastAutoLoadedTaskId = "";
     g_LastHelperStatusRefreshTime = 0;
     UpdatePipelineCommand();
     RefreshBundleFiles();
@@ -255,11 +266,8 @@ void RefreshHelperStatus() {
         return;
     }
     if (TryLoadHelperStatus(donePath)) {
-        if (!g_BundleLoaded && IsBundleFileAvailable(g_SelectedBundleFileName)) {
-            ReloadBundle();
-        } else {
-            RefreshBundleFiles();
-        }
+        RefreshBundleFiles();
+        AutoLoadGeneratedBundleIfReady();
         return;
     }
 
@@ -267,6 +275,8 @@ void RefreshHelperStatus() {
     g_HelperProgress = "";
     g_HelperError = "";
     g_HelperLogPath = "";
+    g_HelperTaskId = "";
+    g_HelperUpdatedAt = "";
 }
 
 bool TryLoadHelperStatus(const string &in path) {
@@ -310,7 +320,35 @@ bool TryLoadHelperStatus(const string &in path) {
     g_HelperProgress = JsonGetString(root, "progress");
     g_HelperError = JsonGetString(root, "error");
     g_HelperLogPath = JsonGetString(root, "log_path");
+    g_HelperTaskId = JsonGetString(root, "task_id");
+    g_HelperUpdatedAt = JsonGetString(root, "updated_at");
     return true;
+}
+
+void AutoLoadGeneratedBundleIfReady() {
+    if (!g_AutoLoadGeneratedBundle || g_HelperStatus != "done") {
+        return;
+    }
+
+    string taskKey = g_HelperTaskId.Length > 0 ? g_HelperTaskId : BuildCurrentHelperTaskFileName();
+    if (taskKey == g_LastAutoLoadedTaskId) {
+        return;
+    }
+
+    string generatedFileName = "top_" + BuildPipelineRangeFolderName() + ".analysis_bundle.json";
+    RefreshBundleFiles();
+    for (uint i = 0; i < g_AvailableBundleFiles.Length; i++) {
+        if (g_AvailableBundleFiles[i] != generatedFileName) {
+            continue;
+        }
+
+        g_SelectedBundleFileName = g_AvailableBundleFiles[i];
+        g_SelectedBundleFolderName = g_AvailableBundleFolders[i];
+        g_SelectedBundleIndex = int(i);
+        ReloadBundle();
+        g_LastAutoLoadedTaskId = taskKey;
+        return;
+    }
 }
 
 string BuildCurrentHelperTaskStoragePath(const string &in state) {

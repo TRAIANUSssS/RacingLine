@@ -4,7 +4,7 @@ void RenderWindow() {
     }
 
     UI::SetNextWindowSize(420, 320, UI::Cond::FirstUseEver);
-    if (UI::Begin("RacingLine", g_ShowWindow)) {
+    if (UI::Begin("RacingLine", g_ShowWindow, UI::WindowFlags::None)) {
         if (g_DevMode) {
             RenderDevWindowContent();
         } else {
@@ -12,6 +12,135 @@ void RenderWindow() {
         }
     }
     UI::End();
+}
+
+void RenderSettings() {
+    g_ShowWindow = UI::Checkbox("Show RacingLine window", g_ShowWindow);
+    UI::Separator();
+
+    UI::BeginTabBar("racingline-settings-tabs");
+    if (UI::BeginTabItem("User")) {
+        RenderUserSettingsTab();
+        UI::EndTabItem();
+    }
+    if (UI::BeginTabItem("Developer")) {
+        RenderDeveloperSettingsTab();
+        UI::EndTabItem();
+    }
+    UI::EndTabBar();
+}
+
+void RenderUserSettingsTab() {
+    AutoRefreshBundleFiles();
+
+    UI::Text("Current map: " + (g_CurrentMapName.Length > 0 ? g_CurrentMapName : "-"));
+    if (g_AvailableBundleFiles.Length == 0) {
+        UI::Text("Bundle: " + GetSelectedBundleLabel());
+    } else {
+        UI::SetNextItemWidth(240.0f);
+        if (UI::BeginCombo("Bundle##settings", GetSelectedBundleLabel())) {
+            for (uint i = 0; i < g_AvailableBundleFiles.Length; i++) {
+                bool isSelected = int(i) == g_SelectedBundleIndex;
+                if (UI::Selectable(g_AvailableBundleLabels[i] + "##settings-bundle-" + g_AvailableBundleFiles[i], isSelected)) {
+                    g_SelectedBundleFileName = g_AvailableBundleFiles[i];
+                    g_SelectedBundleFolderName = g_AvailableBundleFolders[i];
+                    g_SelectedBundleIndex = int(i);
+                    ReloadBundle();
+                }
+            }
+            UI::EndCombo();
+        }
+    }
+
+    UI::Separator();
+    UI::Text("Defaults");
+    g_DefaultRangeFrom = UI::InputInt("Default rank from", g_DefaultRangeFrom);
+    g_DefaultRangeTo = UI::InputInt("Default rank to", g_DefaultRangeTo);
+    NormalizeDefaultRange();
+    if (UI::Button("Apply default rank range")) {
+        g_PipelineRangeFrom = g_DefaultRangeFrom;
+        g_PipelineRangeTo = g_DefaultRangeTo;
+        NormalizePipelineRange();
+    }
+    g_AutoLoadGeneratedBundle = UI::Checkbox("Auto-load generated bundle", g_AutoLoadGeneratedBundle);
+
+    UI::Separator();
+    RenderUserNewBundleSection();
+
+    UI::Separator();
+    RenderUserToggleGrid();
+
+    UI::Separator();
+    UI::Text("Render settings");
+    RenderRenderSettingsSliders();
+}
+
+void RenderDeveloperSettingsTab() {
+    UI::Text("Developer UI");
+    g_DevMode = UI::Checkbox("Show developer UI window", g_DevMode);
+    g_ShowRouteDebug = UI::Checkbox("Show route debug in Info", g_ShowRouteDebug);
+    if (UI::Button("Force route reacquire")) {
+        ResetRouteWindowState();
+    }
+
+    UI::Separator();
+    UI::Text("Pipeline");
+    string previousRoot = g_PipelineProjectRoot;
+    string previousReplayDir = g_PipelineReplayInputDir;
+    bool previousReplayDirAuto = g_PipelineReplayInputDirAuto;
+    bool previousIncludeMineReplay = g_PipelineIncludeMineReplay;
+    bool previousWritePlots = g_PipelineWritePlots;
+
+    g_PipelineProjectRoot = UI::InputText("Project root##settings", g_PipelineProjectRoot);
+    g_PipelineWritePlots = UI::Checkbox("Write debug plots##settings", g_PipelineWritePlots);
+    g_PipelineReplayInputDirAuto = UI::Checkbox("Auto replay dir##settings", g_PipelineReplayInputDirAuto);
+    string autoReplayInputDir = BuildDefaultReplayInputDir(g_CurrentMapName, g_CurrentMapUid);
+    if (g_PipelineReplayInputDirAuto) {
+        g_PipelineReplayInputDir = autoReplayInputDir;
+    }
+    g_PipelineReplayInputDir = UI::InputText("Replay dir##settings", g_PipelineReplayInputDir);
+    if (g_PipelineReplayInputDirAuto && g_PipelineReplayInputDir != autoReplayInputDir) {
+        g_PipelineReplayInputDirAuto = false;
+    }
+    g_PipelineIncludeMineReplay = UI::Checkbox("Use mine replay##settings", g_PipelineIncludeMineReplay);
+
+    if (previousRoot != g_PipelineProjectRoot || previousReplayDir != g_PipelineReplayInputDir || previousReplayDirAuto != g_PipelineReplayInputDirAuto || previousIncludeMineReplay != g_PipelineIncludeMineReplay || previousWritePlots != g_PipelineWritePlots) {
+        UpdatePipelineCommand();
+        g_PipelineCopyStatus = "";
+    }
+
+    if (UI::Button("Copy command##settings")) {
+        UpdatePipelineCommand();
+        IO::SetClipboard(g_PipelineCommand);
+        g_PipelineCopyStatus = "Copied.";
+    }
+    UI::TextWrapped(g_PipelineCommand);
+
+    UI::Separator();
+    RenderStatusSection();
+    UI::Separator();
+    RenderInfoSection();
+}
+
+void NormalizeDefaultRange() {
+    if (g_DefaultRangeFrom < 1) {
+        g_DefaultRangeFrom = 1;
+    }
+    if (g_DefaultRangeFrom > PipelineMaxRank) {
+        g_DefaultRangeFrom = PipelineMaxRank;
+    }
+    if (g_DefaultRangeTo < 1) {
+        g_DefaultRangeTo = 1;
+    }
+    if (g_DefaultRangeTo > PipelineMaxRank) {
+        g_DefaultRangeTo = PipelineMaxRank;
+    }
+    if (g_DefaultRangeTo < g_DefaultRangeFrom) {
+        g_DefaultRangeTo = g_DefaultRangeFrom;
+    }
+    if (g_DefaultRangeTo - g_DefaultRangeFrom > 20) {
+        g_DefaultRangeTo = g_DefaultRangeFrom + 20;
+    }
 }
 
 void RenderDevWindowContent() {
@@ -24,8 +153,6 @@ void RenderDevWindowContent() {
     RenderToggleSection();
     UI::Separator();
     RenderInfoSection();
-    UI::Separator();
-    g_DevMode = UI::Checkbox("Dev mode", g_DevMode);
 }
 
 void RenderUserWindowContent() {
@@ -62,30 +189,12 @@ void RenderUserWindowContent() {
     }
 
     UI::Separator();
-    UI::Text("Generate new bundle");
-    RenderUserRankControls();
-    RenderLeaderboardDownloadSection(false);
-    RenderHelperStatusSection(false);
-
-    g_PipelineAutoSamples = UI::Checkbox("Auto samples", g_PipelineAutoSamples);
-    if (g_PipelineAutoSamples) {
-        UI::Text("Sample density: 10 points/sec");
-    } else {
-        g_PipelineManualSamples = UI::SliderInt("Sample points", g_PipelineManualSamples, 50, 3000);
-        NormalizePipelineRange();
-    }
+    RenderUserNewBundleSection();
 
     UI::Separator();
     RenderUserToggleGrid();
 
-    UI::TextWrapped("Showing other runs or the full trajectory can heavily affect performance.");
-
-    g_ShowAdvancedOptions = UI::Checkbox("Extra options", g_ShowAdvancedOptions);
-    if (g_ShowAdvancedOptions) {
-        RenderRenderSettingsSliders();
-    }
-
-    g_DevMode = UI::Checkbox("Dev mode (You don't need to click here ;)", g_DevMode);
+    RenderPerformanceWarning();
 }
 
 void RenderUserRankControls() {
@@ -122,6 +231,16 @@ void RenderUserToggleGrid() {
         g_ShowFullTrajectory = UI::Checkbox("Show Full Trajectory", g_ShowFullTrajectory);
         UI::EndTable();
     }
+}
+
+void RenderPerformanceWarning() {
+    if (!g_ShowOtherRuns && !g_ShowFullTrajectory) {
+        return;
+    }
+
+    UI::PushStyleColor(UI::Col::Text, vec4(1.0f, 0.2f, 0.2f, 1.0f));
+    UI::TextWrapped("Showing other runs or the full trajectory can heavily affect performance.");
+    UI::PopStyleColor();
 }
 
 void RenderDataSection() {
@@ -240,11 +359,11 @@ void RenderLeaderboardDownloadSection(bool devMode) {
         : BuildCurrentLeaderboardDownloadStoragePath();
     UI::TextWrapped("Destination: " + destination);
 
-    if (UI::Button(g_LeaderboardDownloadRunning ? "Downloading records" : "Download records")) {
+    if (UI::Button(g_LeaderboardDownloadRunning ? "Getting lines..." : "Get lines!")) {
         StartLeaderboardDownload(false);
     }
     UI::SameLine();
-    if (UI::Button("Force download")) {
+    if (UI::Button("Force get lines!")) {
         StartLeaderboardDownload(true);
     }
 
@@ -256,6 +375,61 @@ void RenderLeaderboardDownloadSection(bool devMode) {
     if (devMode) {
         UI::Text("Total entries: " + g_LeaderboardTotalCount);
     }
+}
+
+void RenderUserNewBundleSection() {
+    UI::Text("New bundle");
+    RenderUserRankControls();
+
+    if (UI::Button(g_LeaderboardDownloadRunning ? "Getting lines..." : "Get lines!")) {
+        StartLeaderboardDownload(false);
+    }
+    UI::SameLine();
+    if (UI::Button("Force get lines!")) {
+        StartLeaderboardDownload(true);
+    }
+
+    UI::TextWrapped(BuildUserGenerationLogLine());
+
+    if (UI::Button("Refresh helper status")) {
+        RefreshHelperStatus();
+    }
+
+    g_PipelineAutoSamples = UI::Checkbox("Auto samples", g_PipelineAutoSamples);
+    if (g_PipelineAutoSamples) {
+        UI::Text("Sample density: 10 points/sec");
+    } else {
+        g_PipelineManualSamples = UI::SliderInt("Sample points", g_PipelineManualSamples, 50, 3000);
+        NormalizePipelineRange();
+    }
+}
+
+string BuildUserGenerationLogLine() {
+    if (g_LeaderboardDownloadRunning) {
+        return "Downloaded: " + g_LeaderboardDownloadedCount + "  Skipped: " + g_LeaderboardSkippedCount + "  Failed: " + g_LeaderboardFailedCount;
+    }
+
+    if (g_LeaderboardFailedCount > 0) {
+        return "Failed to download some records. Downloaded: " + g_LeaderboardDownloadedCount + "  Skipped: " + g_LeaderboardSkippedCount + "  Failed: " + g_LeaderboardFailedCount;
+    }
+
+    if (g_HelperStatus == "running") {
+        return "Processing lines" + (g_HelperProgress.Length > 0 ? ": " + g_HelperProgress : "...");
+    }
+
+    if (g_HelperStatus == "done") {
+        return "Done. Bundle generated successfully.";
+    }
+
+    if (g_HelperStatus == "failed") {
+        return "Failed to process replay data" + (g_HelperError.Length > 0 ? ": " + g_HelperError : ".");
+    }
+
+    if (g_HelperStatus == "Waiting for helper.") {
+        return "Start RacingLine helper to process downloaded records.";
+    }
+
+    return "Idle.";
 }
 
 void RenderHelperStatusSection(bool devMode) {
@@ -323,9 +497,11 @@ void RenderInfoSection() {
     UI::Text("Projected problem zones: " + g_LastProjectedProblemZones);
     UI::Text("Skipped problem zones: " + g_LastSkippedProblemZones);
     UI::Text("Viewport cameras: " + g_LastCameraCount);
-    UI::Text("Route window: " + (g_RouteWindowAvailable ? "on" : "off"));
-    UI::Text("Route anchor: " + g_RenderAnchorIndex + "  window: " + g_VisibleIndexStart + "-" + g_VisibleIndexEnd);
-    UI::Text("Route anchor distance: " + g_LastRouteAnchorDistance);
+    if (g_ShowRouteDebug) {
+        UI::Text("Route window: " + (g_RouteWindowAvailable ? "on" : "off"));
+        UI::Text("Route anchor: " + g_RenderAnchorIndex + "  window: " + g_VisibleIndexStart + "-" + g_VisibleIndexEnd);
+        UI::Text("Route anchor distance: " + g_LastRouteAnchorDistance);
+    }
 }
 
 void RenderToggleSection() {
@@ -357,6 +533,8 @@ void RenderRenderSettingsSliders() {
     g_CenterLineWidth = UI::SliderFloat("Center width", g_CenterLineWidth, 1.0f, 10.0f);
     g_MineLineWidth = UI::SliderFloat("Mine width", g_MineLineWidth, 1.0f, 10.0f);
     g_OtherRunLineWidth = UI::SliderFloat("Other runs width", g_OtherRunLineWidth, 0.5f, 5.0f);
+    g_OtherRunOpacity = UI::SliderFloat("Other runs opacity", g_OtherRunOpacity, 0.05f, 1.0f);
+    g_MaxVisibleOtherRuns = UI::SliderInt("Max other runs", g_MaxVisibleOtherRuns, 0, 100);
     g_ProblemZoneMarkerSize = UI::SliderFloat("Problem marker size", g_ProblemZoneMarkerSize, 2.0f, 32.0f);
     g_MaxVisibleProblemZones = UI::SliderInt("Problem zones", g_MaxVisibleProblemZones, 0, 20);
 }

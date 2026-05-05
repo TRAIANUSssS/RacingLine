@@ -709,8 +709,8 @@ Current implementation:
 - the Openplanet window has two modes: compact user UI and dev UI
 - compact user UI is the default
 - dev UI keeps the previous technical blocks: `Status`, `Data`, `Pipeline`, `Toggles`, and `Info`
-- both modes include a `Dev mode` checkbox, so the user can enter or leave dev UI
-- compact user UI shows current map, bundle selector, reload/refresh buttons, rank range controls, command generation buttons, sample controls, render toggles, performance warning text, and optional advanced render settings
+- dev UI is enabled from the Openplanet plugin settings `Developer` tab
+- compact user UI shows current map, bundle selector, reload/refresh buttons, rank range controls, `Get lines!` controls, one compact generation log line, sample controls, render toggles, and a conditional performance warning
 
 Compact UI layout:
 
@@ -718,12 +718,13 @@ Compact UI layout:
 - bundle combo box
 - `Reload` and `Refresh bundles` buttons on one line
 - compact `Rank from` / `to` fields
-- `Generate` and `Force generate` buttons
+- `Get lines!` and `Force get lines!` buttons
+- one compact log/status line for helper/download/generation state
+- `Refresh helper status`
 - `Auto samples` and either density text or manual sample slider
 - six render checkboxes in two columns
-- warning that other runs and full trajectory can hurt performance
-- `Extra options` checkbox for render sliders
-- `Dev mode` checkbox with a warning text
+- red warning that other runs and full trajectory can hurt performance, shown only when either option is enabled
+- advanced render sliders and dev mode controls live in Openplanet plugin settings
 
 ### Stage 16 - Live progress lookahead rendering
 
@@ -916,7 +917,7 @@ PluginStorage/RacingLine/downloads/<map_uid>/top_<from>_<to>/
 ```
 
 - files are named as `.Replay.Gbx` because the Core record endpoint returns replay URLs
-- existing files are skipped by default and can be overwritten with `Force download`
+- existing files are skipped by default and can be overwritten with `Force get lines!`
 - the same download action also downloads or reuses the current player's mine replay in `PluginStorage/RacingLine/tmp/<map_uid>/mine.Replay.Gbx`
 - after the combined download action, `--include-mine-replay --mine-replay-path ...` is enabled in the generated pipeline command
 - `manifest.json` is written next to the downloaded files, including successes, skipped files, and per-entry errors
@@ -1079,11 +1080,17 @@ Problem:
 - compact user UI currently exposes `Extra options` inside the main RacingLine window
 - render sliders are useful, but they are advanced configuration rather than normal workflow controls
 
-Planned direction:
+Implemented direction:
 
-- move render distance, line widths, problem marker size, max visible problem zones, and similar controls into Openplanet plugin settings
-- persist user-facing toggles and render options through `[Setting]` values where appropriate
+- move render distance, line widths, problem marker size, max visible problem zones, route-window tuning, and Escape-menu hiding out of the compact window and into Openplanet plugin settings
+- remove the `Extra options` checkbox from the compact user UI
+- keep render sliders always visible in the `User` settings tab
 - keep the compact UI focused on map, bundle selection, generation/download status, and primary layer toggles
+
+Current status:
+
+- implemented as a `RenderSettings()` tabbed settings UI
+- settings currently use runtime variables; persistence through `[Setting]` fields remains a later cleanup task
 
 ### Stage 4 - UI polish pass
 
@@ -1092,13 +1099,26 @@ Problem:
 - MVP v3 UI is functional, but still has developer-flow artifacts
 - final layout and copy should be tightened before production submission
 
-Planned direction:
+Implemented direction:
 
-- revise compact UI layout after a separate UI pass
-- keep developer-only pipeline and diagnostic details behind dev mode
-- improve helper status text for normal users
+- compact UI is split into three visible blocks: current bundle, new bundle, and render toggles
+- the current bundle block keeps the previous map/bundle/reload/refresh behavior
+- the new bundle block uses `Get lines!` and `Force get lines!` buttons
+- leaderboard destination, verbose download details, and helper log paths are kept in dev mode/settings instead of the compact UI
+- compact generation feedback is reduced to one log-style line
+- helper state is simplified for normal users: start helper, idle, downloading counts, processing, done, failed
+- optional auto-loading selects the freshly generated bundle after helper success
+- developer UI is enabled from plugin settings instead of an in-window checkbox
 - make successful and failed generation states easier to understand
-- avoid exposing paths unless dev mode is enabled or there is an actionable error
+- show the performance warning only when `Show Other Runs` or `Show Full Trajectory` is enabled, and render it in red
+
+Current status:
+
+- implemented in `Ui.as`
+- plugin settings start with `Show RacingLine window`, so the main window can be restored if the top menu item hides it
+- user settings include default rank range, auto-load generated bundle, other-run opacity, and max visible other runs
+- developer settings include route debug visibility and force route reacquire
+- additional visual polish can still be done in a later pass
 
 ### Stage 5 - Collapsible RacingLine window
 
@@ -1107,12 +1127,18 @@ Problem:
 - the RacingLine window can be closed, but it cannot collapse to a small header-style bar
 - other Openplanet plugins use a compact collapsed state that keeps the plugin visible without occupying screen space
 
-Planned direction:
+Implemented direction:
 
-- add a collapsed state to the RacingLine window
-- show a small title/header row when collapsed
-- expand/collapse through a triangle button in the header
+- enable the standard collapsed state of the RacingLine window
+- use the native Openplanet/ImGui title-bar collapse behavior
+- expand/collapse through the standard title-bar triangle
 - preserve the existing menu toggle for fully showing/hiding the window
+
+Current status:
+
+- implemented in `Ui.as`
+- the window passes explicit `UI::WindowFlags::None` to `UI::Begin`, matching the standard detachable-window pattern used by other Openplanet plugins
+- the top menu item still fully shows/hides the window
 
 ### Stage 6 - Helper executable packaging
 
@@ -1188,6 +1214,12 @@ Planned direction:
 - consider downsampling other-run lines in the viewer or bundle
 - keep render distance filtering enabled by default
 - expose performance-heavy options only as advanced settings
+
+Current implementation:
+
+- `MaxVisibleOtherRuns` limits the number of rendered non-mine runs
+- `OtherRunOpacity` controls other-run line opacity
+- both controls are exposed in the `User` settings tab
 
 ### Stage 10 - Helper status and auto-load polish
 

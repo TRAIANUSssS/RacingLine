@@ -22,6 +22,8 @@ float MineLineWidth = 3.0f;
 float OtherRunLineWidth = 1.0f;
 float ProblemZoneMarkerSize = 8.0f;
 int MaxVisibleProblemZones = 5;
+int MaxVisibleOtherRuns = 20;
+float OtherRunOpacity = 0.25f;
 bool ShowFullTrajectory = false;
 float RenderDistance = 300.0f;
 bool HideOverlayInGameMenu = true;
@@ -31,6 +33,8 @@ float RouteLookaheadDistance = 300.0f;
 float RouteReacquireDistance = 120.0f;
 int RouteAnchorBackSearchPoints = 80;
 int RouteAnchorForwardSearchPoints = 180;
+bool AutoLoadGeneratedBundle = true;
+bool ShowRouteDebug = false;
 
 vec4 DebugPointColor = vec4(0.1f, 0.8f, 1.0f, 1.0f);
 float DebugPointRadius = 3.0f;

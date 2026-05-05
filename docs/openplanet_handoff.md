@@ -36,6 +36,7 @@ Direct GBX parsing remains outside AngelScript. The Stage 5 runtime-sampling tra
 - leaderboard record download is implemented through `NadeoServices` Live/Core APIs as a Stage 4 POC
 - local helper status display is implemented for file-based processing handoff
 - pipeline command generation is implemented in the UI
+- plugin settings use a tabbed `RenderSettings()` UI with `User` and `Developer` tabs
 - `Show Center`, `Show Mine`, and `Show Problem Zones` toggles are implemented
 - `Show Other Runs` is implemented for bundles that include `runs[].line`
 - runtime sliders for line widths, marker size, and visible problem zone count are implemented
@@ -78,7 +79,7 @@ The current viewer can:
 - detect the current map name
 - detect the current map UID
 - show a compact user UI by default
-- switch to the full technical dev UI through `Dev mode`
+- switch to the full technical dev UI through the `Developer` plugin settings tab
 - show the current Openplanet user name/login
 - generate and copy a PowerShell command for `pipeline.py`
 - choose automatic or manual analysis sample count in the generated command
@@ -109,19 +110,21 @@ The current viewer can:
 - fall back to distance filtering when route-window mode is disabled or unavailable
 - hide all world overlay lines and markers when the Trackmania Escape/in-game menu is open
 
-Current UI block order:
+Current compact UI block order:
 
-Compact user UI:
-
-1. `Current map`
-2. bundle selector
-3. reload and bundle refresh controls
-4. rank range controls
-5. generate / force-generate controls
-6. sample mode controls
-7. render toggles
-8. optional advanced render settings
-9. `Dev mode`
+1. Current bundle:
+   - current map
+   - bundle selector
+   - reload and bundle refresh controls
+2. New bundle:
+   - rank range controls
+   - `Get lines!` and `Force get lines!`
+   - one compact log/status line
+   - helper status refresh
+   - auto/manual sample controls
+3. Render toggles:
+   - center, mine, other runs, problem zones, speed-delta coloring, full trajectory
+   - red performance warning shown only when `Show Other Runs` or `Show Full Trajectory` is enabled
 
 Dev UI:
 
@@ -145,6 +148,26 @@ The `Pipeline` block includes:
 - an `Auto replay dir` toggle for manually overriding the input directory in dev mode
 - leaderboard record download controls and status
 - local helper status and log path
+
+Plugin settings:
+
+- top-level:
+  - `Show RacingLine window` toggles the main compact/developer window and can restore it after the top menu item hides it
+- `User` tab:
+  - mirrors the normal current-bundle, new-bundle, and render-toggle controls
+  - always shows render sliders and advanced render options that used to live behind `Extra options`
+  - includes default rank range controls and an `Auto-load generated bundle` option
+  - includes other-run opacity and max-visible-other-runs controls
+- `Developer` tab:
+  - enables/disables the developer UI window
+  - can show route debug fields in the `Info` block
+  - can force a route-window anchor reacquire
+  - exposes pipeline project root, debug plots, replay input directory behavior, and mine replay usage
+  - shows the generated command and technical status/info blocks
+
+The compact user UI no longer has an `Extra options` checkbox or a `Dev mode` checkbox. Those controls moved into Openplanet plugin settings.
+
+The RacingLine window uses the native Openplanet/ImGui title-bar collapse behavior. The top menu item still fully shows/hides the window, while the title-bar collapse keeps a compact title bar visible.
 
 The `Data` block lists installed bundles for the current map as compact rank ranges such as `100-110` and `1000-1020`, sorted by numeric range start/end. The underlying files remain named `top_<range>.analysis_bundle.json`. The list refreshes automatically while the UI is open and can still be refreshed manually.
 
@@ -224,6 +247,8 @@ logs/task_<map_uid>_top_<from>_<to>.log
 ```
 
 The Openplanet UI reads the task file for the current map/range and displays status/progress/error text. Processing remains outside Openplanet.
+
+When `Auto-load generated bundle` is enabled, the UI refreshes the bundle list after a helper `done` status and automatically selects/reloads `top_<from>_<to>.analysis_bundle.json` for the current rank range.
 
 Pipeline range rules:
 
