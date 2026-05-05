@@ -998,3 +998,195 @@ Recommendation:
 - do not implement plugin-side bundle generation for MVP v3
 - keep Openplanet UI-only
 - keep extraction, analysis, bundle building, and cache behavior in the local helper / existing pipeline
+
+## MVP v4 Plan (Production Polish)
+
+MVP v4 is the polish and release-preparation stage.
+
+Primary goal:
+
+- bring the local one-button workflow to a state suitable for real user distribution
+- reduce visual clutter in-game
+- move developer-only controls out of the normal UI
+- package the helper so normal users do not need to run Python manually
+- verify that paths and storage behavior work on other computers
+
+### Stage 1 - Multi-lap visual clutter
+
+Problem:
+
+- on maps with multiple laps, route segments can overlap in world space
+- the current analyzer normalizes the whole run to one `0..1` progress range based on cumulative `x/z` distance
+- when the same physical track section is driven multiple times, center/mine/other-run lines and problem markers can render on top of each other
+
+Planned direction:
+
+- avoid simply offsetting lines visually, because that would make the overlay less truthful
+- add a progress-aware or lookahead render mode that shows only the currently relevant route window
+- group or de-duplicate problem zones that are nearly identical in world-space position
+- investigate whether lap/checkpoint information can be extracted reliably enough for a later explicit `lap_index`
+
+MVP v4 target:
+
+- reduce overlapping visual noise enough for multi-lap maps to be usable
+- keep full trajectory rendering available as an advanced/debug option
+
+### Stage 2 - Hide markers or overlay while paused
+
+Problem:
+
+- problem zone dots and/or trajectory overlay remain visible while the game is paused
+- this adds visual noise when the player is not actively driving
+
+Planned direction:
+
+- detect paused/menu state from Openplanet/Trackmania runtime state
+- add a setting such as `Hide overlay when paused`, enabled by default
+- at minimum, hide problem zone markers while paused
+- if reliable, hide the whole world overlay while paused
+
+### Stage 3 - Move Extra Options into Openplanet settings
+
+Problem:
+
+- compact user UI currently exposes `Extra options` inside the main RacingLine window
+- render sliders are useful, but they are advanced configuration rather than normal workflow controls
+
+Planned direction:
+
+- move render distance, line widths, problem marker size, max visible problem zones, and similar controls into Openplanet plugin settings
+- persist user-facing toggles and render options through `[Setting]` values where appropriate
+- keep the compact UI focused on map, bundle selection, generation/download status, and primary layer toggles
+
+### Stage 4 - UI polish pass
+
+Problem:
+
+- MVP v3 UI is functional, but still has developer-flow artifacts
+- final layout and copy should be tightened before production submission
+
+Planned direction:
+
+- revise compact UI layout after a separate UI pass
+- keep developer-only pipeline and diagnostic details behind dev mode
+- improve helper status text for normal users
+- make successful and failed generation states easier to understand
+- avoid exposing paths unless dev mode is enabled or there is an actionable error
+
+### Stage 5 - Collapsible RacingLine window
+
+Problem:
+
+- the RacingLine window can be closed, but it cannot collapse to a small header-style bar
+- other Openplanet plugins use a compact collapsed state that keeps the plugin visible without occupying screen space
+
+Planned direction:
+
+- add a collapsed state to the RacingLine window
+- show a small title/header row when collapsed
+- expand/collapse through a triangle button in the header
+- preserve the existing menu toggle for fully showing/hiding the window
+
+### Stage 6 - Helper executable packaging
+
+Problem:
+
+- the local helper currently runs as `python scripts/racingline_helper.py`
+- normal users should not need Python knowledge or a developer terminal workflow
+
+Planned direction:
+
+- package the helper as a standalone `.exe`
+- verify that the exe can watch `PluginStorage/RacingLine/downloads/`
+- verify that it can run the pipeline or bundled processing dependencies from the expected install location
+- verify task status files, logs, and installed bundles are still written in the current contract
+- document how users start/stop the helper
+
+Open question:
+
+- whether the exe should bundle the whole processing stack or require the project/pipeline folder next to it for MVP v4
+
+### Stage 7 - Path portability audit
+
+Problem:
+
+- production users will not have the same local paths as the developer machine
+- the Openplanet config still contains a hardcoded developer project root
+
+Known issue:
+
+```angelscript
+string PipelineProjectRoot = "E:/Projects/RacingLine";
+```
+
+Planned direction:
+
+- remove hardcoded developer paths from Openplanet defaults
+- prefer Openplanet storage-relative paths inside the plugin
+- keep Python defaults based on `Path.home()` and CLI overrides
+- verify behavior with Cyrillic/non-ASCII Windows usernames
+- verify bundle, task, log, tmp, and download paths on a clean machine
+
+### Stage 8 - Leaderboard record count limit
+
+Problem:
+
+- the UI currently clamps rank input to `10000`
+- that limit matches the current downloader/API behavior, but it is not the real number of players with records on every map
+- for maps with fewer records, users can choose invalid ranges that cannot fully download
+
+Planned direction:
+
+- investigate which Openplanet/Nadeo/Trackmania endpoint exposes the real record count for the current map
+- look at existing plugins that display in-game record counts as a reference
+- replace or supplement the fixed `10000` maximum with the real available record count when it can be detected
+- keep `10000` as a safe fallback if the real count cannot be fetched
+- show clear UI feedback when the selected rank range exceeds available records
+
+MVP v4 target:
+
+- prevent obviously invalid rank ranges for maps with fewer than `10000` records
+- keep the downloader behavior predictable when the total count is unknown
+
+### Stage 9 - Rendering performance guardrails
+
+Problem:
+
+- `Show Other Runs` and `Show Full Trajectory` can become expensive on large bundles
+- rendering every segment of every run is not always necessary for user inspection
+
+Planned direction:
+
+- add limits or settings for maximum visible other runs
+- consider downsampling other-run lines in the viewer or bundle
+- keep render distance filtering enabled by default
+- expose performance-heavy options only as advanced settings
+
+### Stage 10 - Helper status and auto-load polish
+
+Problem:
+
+- Openplanet reads helper status files, but production UX should make the local automation state clearer
+- after successful generation, the newly built bundle should be easy to select or load automatically
+
+Planned direction:
+
+- improve compact helper states: helper missing, waiting, building, done, failed
+- auto-refresh bundle list after helper completion
+- auto-select and reload the generated bundle for the current map/range when safe
+- keep log paths available in dev mode or error details
+
+### Stage 11 - Production documentation and release checklist
+
+Problem:
+
+- current docs are developer-focused
+- production submission needs a clear install/use/debug path
+
+Planned direction:
+
+- add a user-facing install guide
+- document helper exe startup
+- document where bundles, downloads, logs, and task files are stored
+- document known limitations such as multi-lap ambiguity and external helper requirement
+- prepare a release checklist for Openplanet plugin submission
