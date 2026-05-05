@@ -602,15 +602,16 @@ Current recommendation:
 
 ### Stage 12 - Viewer render distance filtering
 
-Status: implemented for the simple distance-based MVP.
+Status: superseded by route-window rendering.
 
 Problem:
 
 - the viewer currently renders every projected point that is visible on screen
 - this can show route segments that are far away from the car
 - it can also show points behind walls or map geometry if the projection succeeds
+- on multi-lap or multi-level maps, a pure distance filter can render disconnected route islands that are physically near the car but not part of the current route section
 
-Current implementation:
+Historical implementation:
 
 - the viewer has a `Show Full Trajectory` checkbox
 - when full trajectory mode is enabled, the overlay renders the whole selected bundle as before
@@ -619,6 +620,19 @@ Current implementation:
 - center line, mine line, and problem zone markers all use the same distance filter
 - line segments are kept when at least one segment endpoint is inside the configured distance from the current car position
 - if the current car position is not available, the viewer falls back to rendering without distance filtering
+
+Current implementation:
+
+- the default render limiter is now route-window based
+- the renderer keeps a stateful nearest `center_line` anchor index
+- each frame, it first searches for the nearest center point in a local index window around the previous anchor
+- if the local match is too far from the car, it performs a global reacquire across the whole `center_line`
+- rendered center, mine, other-run, and problem-zone layers are limited to one continuous index window around the anchor
+- this avoids disconnected overlay islands such as a second line segment on an upper route level while the player is driving on a lower level
+- the route window uses 3D distance for anchor selection, but does not apply a hard vertical-height cutoff, so jumps, loops, wallrides, and high route transitions remain valid
+- problem zones are selected as the first visible zones inside the current route window, instead of always taking the first global top zones
+- `Show Full Trajectory` still disables the route window and renders the full selected bundle
+- the older `Render Distance` slider remains available as a fallback/debug limiter when route-window mode is disabled or unavailable
 
 Open question:
 
@@ -1019,17 +1033,24 @@ Problem:
 - the current analyzer normalizes the whole run to one `0..1` progress range based on cumulative `x/z` distance
 - when the same physical track section is driven multiple times, center/mine/other-run lines and problem markers can render on top of each other
 
-Planned direction:
+Implemented MVP v4 direction:
 
 - avoid simply offsetting lines visually, because that would make the overlay less truthful
-- add a progress-aware or lookahead render mode that shows only the currently relevant route window
-- group or de-duplicate problem zones that are nearly identical in world-space position
+- use a stateful route-window render mode that shows only the currently relevant continuous route section
+- choose the route anchor by combining current car position with continuity from the previous anchor index
+- allow global reacquire when the local route window no longer matches the current car position, so shortcuts and large deviations can rebind to the right section
+- use the same index window for center line, mine line, other runs, and problem zones
+- keep full trajectory rendering available as an advanced/debug option
+
+Remaining later work:
+
+- group or de-duplicate problem zones that are nearly identical in world-space position if route-window filtering is not enough
 - investigate whether lap/checkpoint information can be extracted reliably enough for a later explicit `lap_index`
 
-MVP v4 target:
+Current status:
 
-- reduce overlapping visual noise enough for multi-lap maps to be usable
-- keep full trajectory rendering available as an advanced/debug option
+- implemented in `Renderer.as`
+- tuning controls currently remain in the advanced render options block
 
 ### Stage 2 - Hide markers or overlay while paused
 

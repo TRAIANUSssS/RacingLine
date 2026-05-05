@@ -40,6 +40,7 @@ Direct GBX parsing remains outside AngelScript. The Stage 5 runtime-sampling tra
 - `Show Other Runs` is implemented for bundles that include `runs[].line`
 - runtime sliders for line widths, marker size, and visible problem zone count are implemented
 - `Show Full Trajectory` and `Render Distance` controls are implemented
+- route-window rendering is implemented and enabled by default
 - `center_line` world rendering is implemented
 - `mine_line` world rendering is implemented
 - `problem_zones` world marker rendering is implemented
@@ -103,7 +104,8 @@ The current viewer can:
 - draw all non-mine `runs[].line` trajectories when `Show Other Runs` is enabled
 - draw problem zone markers when `Show Problem Zones` is enabled
 - adjust center line width, mine line width, problem marker size, and visible problem zone count from the UI
-- limit rendered overlay layers by distance from the current car unless `Show Full Trajectory` is enabled
+- limit rendered overlay layers to a continuous route window around the current car unless `Show Full Trajectory` is enabled
+- fall back to distance filtering when route-window mode is disabled or unavailable
 
 Current UI block order:
 
@@ -145,6 +147,34 @@ The `Pipeline` block includes:
 The `Data` block lists installed bundles for the current map as compact rank ranges such as `100-110` and `1000-1020`, sorted by numeric range start/end. The underlying files remain named `top_<range>.analysis_bundle.json`. The list refreshes automatically while the UI is open and can still be refreshed manually.
 
 If the currently selected/default bundle file does not exist for the current map, the UI shows `not found` as the bundle label.
+
+## Route-window rendering
+
+Route-window rendering is the default solution for reducing multi-lap and multi-level visual clutter.
+
+The renderer:
+
+- gets the current car position from the controlled player
+- keeps a stateful nearest anchor index on `center_line`
+- first searches for the nearest center point in a local index window around the previous anchor
+- performs a global reacquire only when the local match is too far from the car
+- builds one continuous visible index window around the anchor using lookbehind/lookahead distances
+- applies that same index window to center line, mine line, other runs, and problem zone markers
+
+This avoids rendering disconnected overlay islands that are physically near the car but belong to a different route section, such as upper/lower track layers or repeated lap geometry.
+
+The anchor search uses 3D distance, but there is no hard vertical-height cutoff. This keeps loops, jumps, wallrides, and steep route transitions valid.
+
+Current route-window tuning values live in `Config.as` and are exposed in the advanced render options:
+
+- `UseRouteWindow`
+- `RouteLookbehindDistance`
+- `RouteLookaheadDistance`
+- `RouteReacquireDistance`
+- `RouteAnchorBackSearchPoints`
+- `RouteAnchorForwardSearchPoints`
+
+`Show Full Trajectory` disables route-window limiting and renders the full selected bundle. The older `Render Distance` control remains as fallback/debug behavior when route-window mode is off or unavailable.
 
 Mine replay storage:
 
@@ -206,13 +236,13 @@ The old flat storage path `PluginStorage/RacingLine/analysis_bundle.json` is no 
 
 ## Suggested next rendering work
 
-1. Add live progress lookahead rendering as a later extension if distance filtering is not enough
+1. Move route-window tuning controls into Openplanet settings during the settings cleanup pass
 2. Add optional per-player run selection if all-runs rendering is too noisy
 3. Improve styling for problem zone markers if needed
 4. Add richer zone labels or details only after the marker layer is stable
 5. Avoid redesigning the bundle schema unless the analyzer needs new viewer fields
 
-Render distance filtering is the current solution for reducing far-away visual clutter. A future time-window mode, such as rendering only the next 5 seconds of the route, would require reliable live-run progress matching and should be treated as a later extension.
+Route-window rendering is the current solution for reducing far-away, multi-lap, and multi-level visual clutter. A future time-based mode, such as rendering only the next 5 seconds of the route, would require reliable live-run progress matching and can be treated as a later extension.
 
 Other player trajectory rendering currently uses a simple `Show Other Runs` checkbox that draws all non-mine runs quietly. A per-player checkbox list can be added later if the bundle metadata and UI complexity justify it.
 

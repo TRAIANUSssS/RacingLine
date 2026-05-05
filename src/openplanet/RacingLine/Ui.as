@@ -323,6 +323,9 @@ void RenderInfoSection() {
     UI::Text("Projected problem zones: " + g_LastProjectedProblemZones);
     UI::Text("Skipped problem zones: " + g_LastSkippedProblemZones);
     UI::Text("Viewport cameras: " + g_LastCameraCount);
+    UI::Text("Route window: " + (g_RouteWindowAvailable ? "on" : "off"));
+    UI::Text("Route anchor: " + g_RenderAnchorIndex + "  window: " + g_VisibleIndexStart + "-" + g_VisibleIndexEnd);
+    UI::Text("Route anchor distance: " + g_LastRouteAnchorDistance);
 }
 
 void RenderToggleSection() {
@@ -339,6 +342,14 @@ void RenderToggleSection() {
 }
 
 void RenderRenderSettingsSliders() {
+    g_UseRouteWindow = UI::Checkbox("Use Route Window", g_UseRouteWindow);
+    if (g_UseRouteWindow) {
+        g_RouteLookbehindDistance = UI::SliderFloat("Route lookbehind", g_RouteLookbehindDistance, 0.0f, 300.0f);
+        g_RouteLookaheadDistance = UI::SliderFloat("Route lookahead", g_RouteLookaheadDistance, 50.0f, 1000.0f);
+        g_RouteReacquireDistance = UI::SliderFloat("Route reacquire distance", g_RouteReacquireDistance, 20.0f, 500.0f);
+        g_RouteAnchorBackSearchPoints = UI::SliderInt("Anchor back search", g_RouteAnchorBackSearchPoints, 0, 500);
+        g_RouteAnchorForwardSearchPoints = UI::SliderInt("Anchor forward search", g_RouteAnchorForwardSearchPoints, 1, 1000);
+    }
     if (!g_ShowFullTrajectory) {
         g_RenderDistance = UI::SliderFloat("Render Distance", g_RenderDistance, 50.0f, 2000.0f);
     }

@@ -9,6 +9,19 @@ uint g_LastSkippedProblemZones = 0;
 uint g_LastCameraCount = 0;
 bool g_LastRenderReferenceAvailable = false;
 vec3 g_LastRenderReferencePos = vec3();
+bool g_RouteWindowAvailable = false;
+int g_RenderAnchorIndex = -1;
+int g_VisibleIndexStart = 0;
+int g_VisibleIndexEnd = -1;
+float g_LastRouteAnchorDistance = 0.0f;
+
+void ResetRouteWindowState() {
+    g_RouteWindowAvailable = false;
+    g_RenderAnchorIndex = -1;
+    g_VisibleIndexStart = 0;
+    g_VisibleIndexEnd = -1;
+    g_LastRouteAnchorDistance = 0.0f;
+}
 
 bool ProjectWorldPoint(const vec3 &in worldPos, vec2 &out screenPos) {
     CGameApp@ app = GetApp();
@@ -81,6 +94,146 @@ bool IsSegmentInsideRenderDistance(const vec3 &in a, const vec3 &in b) {
     return IsPointInsideRenderDistance(a) || IsPointInsideRenderDistance(b);
 }
 
+float DistanceSquared3D(const vec3 &in a, const vec3 &in b) {
+    return DistanceSquared(a, b);
+}
+
+int ClampInt(int value, int minValue, int maxValue) {
+    if (value < minValue) {
+        return minValue;
+    }
+    if (value > maxValue) {
+        return maxValue;
+    }
+    return value;
+}
+
+int MaxInt(int a, int b) {
+    return a > b ? a : b;
+}
+
+float CenterSegmentLength(uint index) {
+    if (g_Bundle is null || index == 0 || index >= g_Bundle.centerLine.Length) {
+        return 0.0f;
+    }
+
+    CenterPoint@ prev = g_Bundle.centerLine[index - 1];
+    CenterPoint@ curr = g_Bundle.centerLine[index];
+    if (prev is null || curr is null) {
+        return 0.0f;
+    }
+
+    return Math::Sqrt(DistanceSquared3D(prev.pos, curr.pos));
+}
+
+int FindNearestCenterIndex(const vec3 &in carPos, int startIndex, int endIndex, float &out bestDistanceSquared) {
+    bestDistanceSquared = 0.0f;
+    if (g_Bundle is null || g_Bundle.centerLine.Length == 0) {
+        return -1;
+    }
+
+    int lastIndex = int(g_Bundle.centerLine.Length) - 1;
+    startIndex = ClampInt(startIndex, 0, lastIndex);
+    endIndex = ClampInt(endIndex, 0, lastIndex);
+    if (endIndex < startIndex) {
+        return -1;
+    }
+
+    int bestIndex = -1;
+    for (int i = startIndex; i <= endIndex; i++) {
+        CenterPoint@ point = g_Bundle.centerLine[uint(i)];
+        if (point is null) {
+            continue;
+        }
+
+        float distanceSquared = DistanceSquared3D(carPos, point.pos);
+        if (bestIndex < 0 || distanceSquared < bestDistanceSquared) {
+            bestIndex = i;
+            bestDistanceSquared = distanceSquared;
+        }
+    }
+
+    return bestIndex;
+}
+
+void UpdateRouteWindow(const vec3 &in carPos) {
+    g_RouteWindowAvailable = false;
+    g_VisibleIndexStart = 0;
+    g_VisibleIndexEnd = -1;
+
+    if (!g_UseRouteWindow || g_ShowFullTrajectory || g_Bundle is null || g_Bundle.centerLine.Length < 2) {
+        return;
+    }
+
+    int lastIndex = int(g_Bundle.centerLine.Length) - 1;
+    int anchorIndex = -1;
+    float bestDistanceSquared = 0.0f;
+    bool needsGlobalReacquire = g_RenderAnchorIndex < 0 || g_RenderAnchorIndex > lastIndex;
+
+    if (!needsGlobalReacquire) {
+        int localStart = g_RenderAnchorIndex - MaxInt(g_RouteAnchorBackSearchPoints, 0);
+        int localEnd = g_RenderAnchorIndex + MaxInt(g_RouteAnchorForwardSearchPoints, 0);
+        anchorIndex = FindNearestCenterIndex(carPos, localStart, localEnd, bestDistanceSquared);
+        float reacquireDistance = Math::Max(g_RouteReacquireDistance, 1.0f);
+        if (anchorIndex < 0 || bestDistanceSquared > reacquireDistance * reacquireDistance) {
+            needsGlobalReacquire = true;
+        }
+    }
+
+    if (needsGlobalReacquire) {
+        anchorIndex = FindNearestCenterIndex(carPos, 0, lastIndex, bestDistanceSquared);
+    }
+
+    if (anchorIndex < 0) {
+        return;
+    }
+
+    g_RenderAnchorIndex = anchorIndex;
+    g_LastRouteAnchorDistance = Math::Sqrt(bestDistanceSquared);
+
+    int startIndex = anchorIndex;
+    float accumulated = 0.0f;
+    float lookbehind = Math::Max(g_RouteLookbehindDistance, 0.0f);
+    while (startIndex > 0 && accumulated < lookbehind) {
+        accumulated += CenterSegmentLength(uint(startIndex));
+        startIndex--;
+    }
+
+    int endIndex = anchorIndex;
+    accumulated = 0.0f;
+    float lookahead = Math::Max(g_RouteLookaheadDistance, 0.0f);
+    while (endIndex < lastIndex && accumulated < lookahead) {
+        endIndex++;
+        accumulated += CenterSegmentLength(uint(endIndex));
+    }
+
+    g_VisibleIndexStart = startIndex;
+    g_VisibleIndexEnd = endIndex;
+    g_RouteWindowAvailable = g_VisibleIndexEnd > g_VisibleIndexStart;
+}
+
+bool IsSegmentInsideRouteWindow(uint segmentEndIndex) {
+    if (!g_RouteWindowAvailable) {
+        return true;
+    }
+
+    int startIndex = int(segmentEndIndex) - 1;
+    int endIndex = int(segmentEndIndex);
+    return startIndex >= g_VisibleIndexStart && endIndex <= g_VisibleIndexEnd;
+}
+
+bool IsProblemZoneInsideRouteWindow(ProblemZone@ zone) {
+    if (!g_RouteWindowAvailable || zone is null) {
+        return true;
+    }
+
+    if (zone.index >= 0) {
+        return zone.index >= g_VisibleIndexStart && zone.index <= g_VisibleIndexEnd;
+    }
+
+    return IsPointInsideRenderDistance(zone.pos);
+}
+
 void DrawCenterLine() {
     g_LastProjectedCenterSegments = 0;
     g_LastSkippedCenterSegments = 0;
@@ -107,7 +260,7 @@ void DrawCenterLine() {
             continue;
         }
 
-        if (!IsSegmentInsideRenderDistance(prev.pos, curr.pos)) {
+        if (!IsSegmentInsideRouteWindow(i) || (!g_RouteWindowAvailable && !IsSegmentInsideRenderDistance(prev.pos, curr.pos))) {
             g_LastSkippedCenterSegments++;
             hasOpenSubPath = false;
             continue;
@@ -166,7 +319,7 @@ void DrawSpeedDeltaCenterLine() {
             continue;
         }
 
-        if (!IsSegmentInsideRenderDistance(prev.pos, curr.pos)) {
+        if (!IsSegmentInsideRouteWindow(i) || (!g_RouteWindowAvailable && !IsSegmentInsideRenderDistance(prev.pos, curr.pos))) {
             g_LastSkippedCenterSegments++;
             continue;
         }
@@ -238,7 +391,7 @@ void DrawMineLine() {
             continue;
         }
 
-        if (!IsSegmentInsideRenderDistance(prev.pos, curr.pos)) {
+        if (!IsSegmentInsideRouteWindow(i) || (!g_RouteWindowAvailable && !IsSegmentInsideRenderDistance(prev.pos, curr.pos))) {
             g_LastSkippedMineSegments++;
             hasOpenSubPath = false;
             continue;
@@ -294,7 +447,7 @@ void DrawOtherRuns() {
                 continue;
             }
 
-            if (!IsSegmentInsideRenderDistance(prev.pos, curr.pos)) {
+            if (!IsSegmentInsideRouteWindow(i) || (!g_RouteWindowAvailable && !IsSegmentInsideRenderDistance(prev.pos, curr.pos))) {
                 g_LastSkippedOtherRunSegments++;
                 hasOpenSubPath = false;
                 continue;
@@ -339,14 +492,19 @@ void DrawProblemZones() {
         return;
     }
 
-    uint visibleCount = Math::Min(uint(Math::Max(g_MaxVisibleProblemZones, 0)), g_Bundle.problemZones.Length);
-    for (uint i = 0; i < visibleCount; i++) {
+    uint visibleLimit = Math::Min(uint(MaxInt(g_MaxVisibleProblemZones, 0)), g_Bundle.problemZones.Length);
+    uint renderedCount = 0;
+    for (uint i = 0; i < g_Bundle.problemZones.Length; i++) {
+        if (renderedCount >= visibleLimit) {
+            break;
+        }
+
         ProblemZone@ zone = g_Bundle.problemZones[i];
         if (zone is null) {
             continue;
         }
 
-        if (!IsPointInsideRenderDistance(zone.pos)) {
+        if (!IsProblemZoneInsideRouteWindow(zone) || (!g_RouteWindowAvailable && !IsPointInsideRenderDistance(zone.pos))) {
             g_LastSkippedProblemZones++;
             continue;
         }
@@ -358,6 +516,7 @@ void DrawProblemZones() {
         }
 
         g_LastProjectedProblemZones++;
+        renderedCount++;
 
         nvg::BeginPath();
         nvg::Circle(screenPos, g_ProblemZoneMarkerSize);
@@ -379,6 +538,11 @@ void RenderWorldOverlay() {
     g_LastProjectedProblemZones = 0;
     g_LastSkippedProblemZones = 0;
     g_LastRenderReferenceAvailable = g_ShowFullTrajectory ? false : TryGetCurrentCarPosition(g_LastRenderReferencePos);
+    if (g_LastRenderReferenceAvailable) {
+        UpdateRouteWindow(g_LastRenderReferencePos);
+    } else {
+        g_RouteWindowAvailable = false;
+    }
 
     if (!g_BundleLoaded) {
         return;

@@ -17,6 +17,12 @@ float g_ProblemZoneMarkerSize = ProblemZoneMarkerSize;
 int g_MaxVisibleProblemZones = MaxVisibleProblemZones;
 bool g_ShowFullTrajectory = ShowFullTrajectory;
 float g_RenderDistance = RenderDistance;
+bool g_UseRouteWindow = UseRouteWindow;
+float g_RouteLookbehindDistance = RouteLookbehindDistance;
+float g_RouteLookaheadDistance = RouteLookaheadDistance;
+float g_RouteReacquireDistance = RouteReacquireDistance;
+int g_RouteAnchorBackSearchPoints = RouteAnchorBackSearchPoints;
+int g_RouteAnchorForwardSearchPoints = RouteAnchorForwardSearchPoints;
 
 string g_CurrentMapName = "";
 string g_CurrentMapUid = "";
@@ -86,6 +92,7 @@ void ReloadBundle() {
     }
 
     g_BundlePath = BuildCurrentMapBundlePath(g_SelectedBundleFileName);
+    ResetRouteWindowState();
     bool loaded = LoadBundle(g_BundlePath);
     if (!loaded && g_LastError.Length == 0) {
         g_LastError = "Unknown bundle loading error.";
